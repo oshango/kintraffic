@@ -1,0 +1,144 @@
+name: OSH Auto Kanban Movement
+
+on:
+  issues:
+    types: [opened]
+  push:
+    branches:
+      - 'feature/OSH-*'
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  move-to-todo:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move issue to Todo
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: ["OSH", "todo"]
+            });
+
+  move-to-in-progress:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find linked OSH issue
+        id: find_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = context.ref.replace("refs/heads/", "");
+            const match = branch.match(/OSH-(\d+)/);
+            if (!match) return;
+
+            const oshNumber = match[1];
+
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+
+            const issue = issues.data.find(i => i.title.startsWith(`OSH-${oshNumber}`));
+            if (issue) core.setOutput("issue_number", issue.number);
+
+      - name: Move issue to In Progress
+        if: steps.find_issue.outputs.issue_number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: core.getInput("issue_number"),
+              labels: ["OSH", "in-progress"]
+            });
+
+  move-to-in-review:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find linked OSH issue
+        id: find_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.pull_request.title;
+            const match = title.match(/OSH-(\d+)/);
+            if (!match) return;
+
+            const oshNumber = match[1];
+
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+
+            const issue = issues.data.find(i => i.title.startsWith(`OSH-${oshNumber}`));
+            if (issue) core.setOutput("issue_number", issue.number);
+
+      - name: Move issue to In Review
+        if: steps.find_issue.outputs.issue_number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: core.getInput("issue_number"),
+              labels: ["OSH", "in-review"]
+            });
+
+  move-to-done:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find linked OSH issue
+        id: find_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.pull_request.title;
+            const match = title.match(/OSH-(\d+)/);
+            if (!match) return;
+
+            const oshNumber = match[1];
+
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+
+            const issue = issues.data.find(i => i.title.startsWith(`OSH-${oshNumber}`));
+            if (issue) core.setOutput("issue_number", issue.number);
+
+      - name: Move issue to Done
+        if: steps.find_issue.outputs.issue_number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: core.getInput("issue_number"),
+              labels: ["OSH", "done"]
+            });
