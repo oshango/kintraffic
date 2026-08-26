@@ -1,0 +1,41 @@
+CREATE TABLE Junctions (
+    Id INT IDENTITY PRIMARY KEY,
+    Name NVARCHAR(100),
+    Location NVARCHAR(200),
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Devices (
+    Id INT IDENTITY PRIMARY KEY,
+    JunctionId INT FOREIGN KEY REFERENCES Junctions(Id),
+    SerialNumber NVARCHAR(100),
+    Type NVARCHAR(50),
+    Status NVARCHAR(50),
+    InstalledAt DATETIME
+);
+
+CREATE TABLE Telemetry (
+    Id INT IDENTITY PRIMARY KEY,
+    DeviceId INT FOREIGN KEY REFERENCES Devices(Id),
+    Metric NVARCHAR(50),
+    Value FLOAT,
+    RecordedAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Faults (
+    Id INT IDENTITY PRIMARY KEY,
+    DeviceId INT FOREIGN KEY REFERENCES Devices(Id),
+    FaultType NVARCHAR(100),
+    Severity NVARCHAR(50),
+    DetectedAt DATETIME DEFAULT GETDATE(),
+    ResolvedAt DATETIME NULL
+);
+
+CREATE TABLE WorkOrders (
+    Id INT IDENTITY PRIMARY KEY,
+    FaultId INT FOREIGN KEY REFERENCES Faults(Id),
+    AssignedTo NVARCHAR(100),
+    Status NVARCHAR(50),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CompletedAt DATETIME NULL
+);
