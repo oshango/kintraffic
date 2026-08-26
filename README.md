@@ -45,3 +45,12 @@ We follow a structured commit naming format:
 feat(api): add junctions controller  
 fix(database): correct foreign key for devices  
 refactor(frontend): simplify dashboard layout  
+
+## PR Title Format
+Use the following format for all pull request titles:
+
+<type>: OSH-<story-number>-<story-name>: <short descriptive title>
+
+### Examples
+feat: OSH-12-add-junctions-api: implement junctions controller and DTOs  
+fix: OSH-34-device-fk-error: correct foreign key constraint  
