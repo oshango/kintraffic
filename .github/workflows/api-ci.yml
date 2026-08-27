@@ -15,11 +15,10 @@ jobs:
 
     - uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
 
-    - run: dotnet restore ./api/KinTraffic.Api
-    - run: dotnet build ./api/KinTraffic.Api --configuration Release
-    - run: dotnet test ./api/KinTraffic.Api.Tests --no-build
+    - run: dotnet restore ./api/KinTraffic.Api/KinTraffic.Api.csproj
+    - run: dotnet build ./api/KinTraffic.Api/KinTraffic.Api.csproj --configuration Release --no-restore
 
   deploy:
     if: github.ref == 'refs/heads/main'
