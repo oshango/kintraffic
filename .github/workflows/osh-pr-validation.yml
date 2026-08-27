@@ -17,10 +17,10 @@ jobs:
           script: |
             const title = context.payload.pull_request.title;
 
-            const valid = /^feat: OSH-\d+: .+/.test(title);
+            const valid = /^(feat|fix): OSH-\d+: .+/.test(title);
 
             if (!valid) {
-              core.setFailed(`❌ Invalid PR title format. Expected: feat: OSH-<number>: <description>. Got: ${title}`);
+              core.setFailed(`❌ Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${title}`);
             }
 
       - name: Validate branch name

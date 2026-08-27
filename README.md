@@ -49,8 +49,8 @@ refactor(frontend): simplify dashboard layout
 ## PR Title Format
 Use the following format for all pull request titles:
 
-<type>: OSH-<story-number>-<story-name>: <short descriptive title>
+<type>: OSH-<number>: <description>
 
 ### Examples
-feat: OSH-12-add-junctions-api: implement junctions controller and DTOs  
-fix: OSH-34-device-fk-error: correct foreign key constraint  
+feat: OSH-12: implement junctions controller and DTOs  
+fix: OSH-34: correct foreign key constraint  
