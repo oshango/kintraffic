@@ -19,6 +19,9 @@ Provide a clear and concise description of the change.
 ## Related Issue
 Link the issue number (e.g., #12) or describe the context.
 
+## Linked OSH
+Link the OSH story (e.g., OSH-12).
+
 ## How Has This Been Tested?
 Describe test steps or automated tests.
 
