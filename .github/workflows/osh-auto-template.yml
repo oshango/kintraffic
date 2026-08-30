@@ -1,0 +1,79 @@
+name: OSH Auto Template
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  apply-template:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get issue info
+        id: info
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.issue.title;
+            core.setOutput("title", title);
+
+      - name: Generate template body
+        id: template
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = core.getInput("title");
+
+            // Extract OSH number if present
+            const match = title.match(/^OSH-(\d+)/);
+            const oshNumber = match ? match[1] : "X";
+
+            const branch = `feature/OSH-${oshNumber}-${title.replace(/^OSH-\d+\s*—\s*/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+            const prTitle = `feat: OSH-${oshNumber}: ${title.replace(/^OSH-\d+\s*—\s*/, "")}`;
+
+            const body = "\n" +
+              "## Description\n" +
+              title.replace(/^OSH-\d+\s*—\s*/, "") + "\n\n" +
+              "## Acceptance Criteria\n" +
+              "- [ ] Code implemented\n" +
+              "- [ ] Tests added\n" +
+              "- [ ] PR created\n" +
+              "- [ ] PR follows naming convention\n" +
+              "- [ ] CI/CD passes\n\n" +
+              "## Branch Name\n" +
+              "`" + branch + "`\n\n" +
+              "## PR Title Format\n" +
+              "`" + prTitle + "`\n\n" +
+              "## Linked OSH\n" +
+              "OSH-" + oshNumber + "\n";
+
+            core.setOutput("body", body);
+
+      - name: Update issue body
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = core.getInput("body");
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: body
+            });
+
+      - name: Add labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: ["OSH", "todo"]
+            });

@@ -1,0 +1,63 @@
+name: OSH Auto Numbering
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-number:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if issue is OSH
+        if: startsWith(github.event.issue.title, 'OSH')
+        run: echo "Issue already numbered, skipping."
+
+      - name: Get existing OSH issues
+        id: get_osh
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "all",
+              per_page: 100
+            });
+
+            const oshNumbers = issues.data
+              .filter(i => /^OSH-\d+/.test(i.title))
+              .map(i => parseInt(i.title.match(/^OSH-(\d+)/)[1]));
+
+            const next = oshNumbers.length > 0 ? Math.max(...oshNumbers) + 1 : 1;
+
+            core.setOutput("next", next);
+
+      - name: Rename issue with OSH number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const next = core.getInput("next");
+            const oldTitle = context.payload.issue.title;
+            const newTitle = `OSH-${next} — ${oldTitle}`;
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              title: newTitle
+            });
+
+      - name: Add OSH label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: ["OSH"]
+            });

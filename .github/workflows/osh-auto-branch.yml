@@ -1,0 +1,81 @@
+name: OSH Auto Branch Creation
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract OSH number and title
+        id: extract
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.issue.title;
+
+            const match = title.match(/^OSH-(\d+)\s*—\s*(.*)$/);
+            if (!match) {
+              core.setFailed("Issue is not an OSH issue.");
+              return;
+            }
+
+            const oshNumber = match[1];
+            const rawTitle = match[2];
+
+            const slug = rawTitle
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+
+            const branch = `feature/OSH-${oshNumber}-${slug}`;
+
+            core.setOutput("branch", branch);
+
+      - name: Create branch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = core.getInput("branch");
+
+            // Get default branch SHA
+            const repo = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            const defaultBranch = repo.data.default_branch;
+
+            const ref = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${defaultBranch}`
+            });
+
+            const sha = ref.data.object.sha;
+
+            // Create new branch
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/heads/${branch}`,
+              sha: sha
+            });
+
+      - name: Comment branch name on issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = core.getInput("branch");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `Branch created automatically:\n\n\`${branch}\``
+            });

@@ -1,0 +1,69 @@
+name: OSH PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR title format
+        id: validate_title
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.pull_request.title;
+
+            const valid = /^(feat|fix): OSH-\d+: .+/.test(title);
+
+            if (!valid) {
+              core.setFailed(`Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${title}`);
+            }
+
+      - name: Validate branch name
+        id: validate_branch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+
+            const valid = /^(?:main|develop|feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure))$/.test(branch);
+
+            if (!valid) {
+              core.setFailed(`Invalid branch name.
+              Expected: main, develop, or feature/OSH-<number>-<slug>
+              Got: ${branch}`);
+            }
+
+      - name: Validate OSH link in body
+        id: validate_body
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = context.payload.pull_request.body || "";
+
+            const valid = /Linked OSH/i.test(body);
+
+            if (!valid) {
+              core.setFailed(`PR body missing OSH link.
+              Expected section:
+              "## Linked OSH"`);
+            }
+
+      - name: Add labels
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ["OSH", "in-review"]
+            });
