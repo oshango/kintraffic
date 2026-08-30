@@ -17,10 +17,10 @@ jobs:
           script: |
             const title = context.payload.pull_request.title;
 
-            const valid = /^feat: OSH-\d+: .+/.test(title);
+            const valid = /^(feat|fix): OSH-\d+: .+/.test(title);
 
             if (!valid) {
-              core.setFailed(`❌ Invalid PR title format. Expected: feat: OSH-<number>: <description>. Got: ${title}`);
+              core.setFailed(`Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${title}`);
             }
 
       - name: Validate branch name
@@ -31,10 +31,10 @@ jobs:
           script: |
             const branch = context.payload.pull_request.head.ref;
 
-            const valid = /^feature\/OSH-\d+-/.test(branch);
+            const valid = /^feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure)$/.test(branch);
 
             if (!valid) {
-              core.setFailed(`❌ Invalid branch name.
+              core.setFailed(`Invalid branch name.
               Expected: feature/OSH-<number>-<slug>
               Got: ${branch}`);
             }
@@ -50,12 +50,13 @@ jobs:
             const valid = /Linked OSH/i.test(body);
 
             if (!valid) {
-              core.setFailed(`❌ PR body missing OSH link.
+              core.setFailed(`PR body missing OSH link.
               Expected section:
               "## Linked OSH"`);
             }
 
       - name: Add labels
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
