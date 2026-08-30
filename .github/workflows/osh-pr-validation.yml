@@ -31,11 +31,11 @@ jobs:
           script: |
             const branch = context.payload.pull_request.head.ref;
 
-            const valid = /^feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure)$/.test(branch);
+            const valid = /^(?:main|develop|feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure))$/.test(branch);
 
             if (!valid) {
               core.setFailed(`Invalid branch name.
-              Expected: feature/OSH-<number>-<slug>
+              Expected: main, develop, or feature/OSH-<number>-<slug>
               Got: ${branch}`);
             }
 
