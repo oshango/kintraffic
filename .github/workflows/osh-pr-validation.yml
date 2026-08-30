@@ -20,7 +20,7 @@ jobs:
             const valid = /^(feat|fix): OSH-\d+: .+/.test(title);
 
             if (!valid) {
-              core.setFailed(`❌ Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${title}`);
+              core.setFailed(`Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${title}`);
             }
 
       - name: Validate branch name
@@ -34,8 +34,8 @@ jobs:
             const valid = /^feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure)$/.test(branch);
 
             if (!valid) {
-              core.setFailed(`❌ Invalid branch name.
-              Expected: feature/OSH-<number>-<slug> or feature/project-structure
+              core.setFailed(`Invalid branch name.
+              Expected: feature/OSH-<number>-<slug>
               Got: ${branch}`);
             }
 
@@ -50,7 +50,7 @@ jobs:
             const valid = /Linked OSH/i.test(body);
 
             if (!valid) {
-              core.setFailed(`❌ PR body missing OSH link.
+              core.setFailed(`PR body missing OSH link.
               Expected section:
               "## Linked OSH"`);
             }
