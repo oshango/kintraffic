@@ -15,12 +15,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const title = context.payload.pull_request.title;
+            const title = context.payload.pull_request.title.trim();
 
-            const valid = /^(feat|fix): OSH-\d+: .+/.test(title);
+            const valid = /^(feat|fix):\s+OSH-\d+:\s+\S.*$/i.test(title);
 
             if (!valid) {
-              core.setFailed(`Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${title}`);
+              core.setFailed(`Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${JSON.stringify(title)}`);
             }
 
       - name: Validate branch name
