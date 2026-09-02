@@ -4,6 +4,9 @@ on:
   issues:
     types: [opened]
 
+permissions:
+  issues: write
+
 jobs:
   apply-template:
     runs-on: ubuntu-latest
@@ -21,10 +24,12 @@ jobs:
       - name: Generate template body
         id: template
         uses: actions/github-script@v7
+        env:
+          TITLE: ${{ steps.info.outputs.title }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const title = core.getInput("title");
+            const title = process.env.TITLE;
 
             // Extract OSH number if present
             const match = title.match(/^OSH-(\d+)/);
@@ -54,10 +59,12 @@ jobs:
 
       - name: Update issue body
         uses: actions/github-script@v7
+        env:
+          BODY: ${{ steps.template.outputs.body }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const body = core.getInput("body");
+            const body = process.env.BODY;
 
             await github.rest.issues.update({
               owner: context.repo.owner,
