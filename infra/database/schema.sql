@@ -5,6 +5,23 @@ CREATE TABLE Junctions (
     CreatedAt DATETIME DEFAULT GETDATE()
 );
 
+CREATE TABLE RoadSegments (
+    Id INT IDENTITY PRIMARY KEY,
+    Name NVARCHAR(150) NOT NULL,
+    CorridorName NVARCHAR(150) NULL,
+    Geometry NVARCHAR(MAX) NOT NULL,
+    LengthMeters DECIMAL(10, 2) NULL
+);
+
+CREATE TABLE TrafficStates (
+    Id INT IDENTITY PRIMARY KEY,
+    RoadSegmentId INT NOT NULL FOREIGN KEY REFERENCES RoadSegments(Id),
+    CongestionLevel NVARCHAR(50) NOT NULL,
+    AverageSpeedKph DECIMAL(10, 2) NOT NULL,
+    VehicleCount INT NOT NULL,
+    RecordedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
 CREATE TABLE Devices (
     Id INT IDENTITY PRIMARY KEY,
     JunctionId INT FOREIGN KEY REFERENCES Junctions(Id),

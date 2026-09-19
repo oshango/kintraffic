@@ -17,12 +17,27 @@ using KinTraffic.Api.Services.WorkOrders;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("Frontend", policy =>
+	{
+		policy.WithOrigins(allowedOrigins)
+			.AllowAnyHeader()
+			.AllowAnyMethod();
+	});
+});
 
 builder.Services.AddScoped<TrafficRepository>();
 builder.Services.AddScoped<TrafficService>();
+builder.Services.AddScoped<RoadSegmentRepository>();
+builder.Services.AddScoped<RoadSegmentService>();
+builder.Services.AddScoped<TrafficStateRepository>();
+builder.Services.AddScoped<TrafficStateService>();
 
 builder.Services.AddScoped<AssetRepository>();
 builder.Services.AddScoped<AssetService>();
@@ -48,6 +63,7 @@ builder.Services.AddScoped<AuditService>();
 var app = builder.Build();
 
 app.MapOpenApi();
+app.UseCors("Frontend");
 app.MapControllers();
 
 app.Run();

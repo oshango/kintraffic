@@ -1,0 +1,46 @@
+name: Terraform Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'infra/terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'infra/terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory:
+          - infra/terraform/bootstrap
+          - infra/terraform/api
+          - infra/terraform/ui
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Check formatting
+        run: terraform fmt -check -diff
+
+      - name: Initialize providers
+        run: terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        run: terraform validate
