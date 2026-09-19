@@ -46,6 +46,19 @@ jobs:
       id-token: write
 
     steps:
+    - name: Validate Azure OIDC configuration
+      env:
+        AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      run: |
+        for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
+          if [[ ! "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            echo "::error::Azure OIDC IDs must be UUIDs. Replace placeholder values in the production Environment."
+            exit 1
+          fi
+        done
+
     - name: Sign in to Azure with OIDC
       uses: azure/login@v2
       with:
