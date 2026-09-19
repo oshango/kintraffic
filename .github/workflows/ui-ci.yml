@@ -52,6 +52,20 @@ jobs:
       contents: read
 
     steps:
+    - name: Validate production UI configuration
+      env:
+        STATIC_WEB_APPS_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        UI_URL: ${{ vars.PRODUCTION_UI_URL }}
+      run: |
+        if [[ -z "$STATIC_WEB_APPS_TOKEN" || "$STATIC_WEB_APPS_TOKEN" == "PRODUCTION_UI_URL" ]]; then
+          echo "::error::AZURE_STATIC_WEB_APPS_API_TOKEN is missing or invalid in the production Environment. Replace it with the current token from Azure Static Web App secrets."
+          exit 1
+        fi
+        if [[ ! "$UI_URL" =~ ^https://[^[:space:]]+$ ]]; then
+          echo "::error::PRODUCTION_UI_URL must be a full https URL in the production Environment."
+          exit 1
+        fi
+
     - name: Download UI artifact
       uses: actions/download-artifact@v4
       with:
