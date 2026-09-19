@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+
+env:
+  AZURE_CONTAINER_REGISTRY_NAME: kintrafficacr
+
+concurrency:
+  group: api-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,19 +27,49 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - run: dotnet restore ./api/KinTraffic.Api/KinTraffic.Api.csproj
-    - run: dotnet build ./api/KinTraffic.Api/KinTraffic.Api.csproj --configuration Release --no-restore
+    - name: Restore
+      run: dotnet restore ./api/KinTraffic.Api.Tests/KinTraffic.Api.Tests.csproj
+
+    - name: Build
+      run: dotnet build ./api/KinTraffic.Api.Tests/KinTraffic.Api.Tests.csproj --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test ./api/KinTraffic.Api.Tests/KinTraffic.Api.Tests.csproj --configuration Release --no-build --no-restore
 
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
-    - uses: actions/checkout@v4
-
-    - uses: azure/webapps-deploy@v2
+    - name: Sign in to Azure with OIDC
+      uses: azure/login@v2
       with:
-        app-name: KinTraffic-Api
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./api/KinTraffic.Api
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Sign in to Azure Container Registry
+      run: az acr login --name "${{ env.AZURE_CONTAINER_REGISTRY_NAME }}"
+
+    - name: Build container image
+      run: docker build --tag "${{ env.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/kintraffic-api:${{ github.sha }}" ./api/KinTraffic.Api
+
+    - name: Push immutable container image
+      env:
+        IMAGE: ${{ env.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/kintraffic-api:${{ github.sha }}
+      run: |
+        docker push "$IMAGE"
+        echo "IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE")" >> "$GITHUB_ENV"
+
+    - name: Deploy Container App
+      run: az containerapp update --name kintraffic-api --resource-group kintraffic-rg --image "$IMAGE_DIGEST" --revision-suffix "${GITHUB_SHA:0:12}"
+
+    - name: Verify API health
+      env:
+        API_HEALTH_URL: ${{ vars.PRODUCTION_API_URL }}/api/Health
+      run: curl --fail --silent --show-error --location --retry 10 --retry-delay 5 --retry-all-errors "$API_HEALTH_URL"
