@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kintraffic-config
+  namespace: kintraffic
+data:
+  API_BASE_URL: "http://api:8080"
+---
