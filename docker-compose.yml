@@ -1,0 +1,14 @@
+services:
+  api:
+    build:
+      context: ./api/KinTraffic.Api
+    ports:
+      - "8080:8080"
+
+  ui:
+    build:
+      context: ./ui/kintraffic-ui
+    ports:
+      - "4200:4200"
+    depends_on:
+      - api
