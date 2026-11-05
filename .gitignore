@@ -376,6 +376,13 @@ OpenCover/
 # Azure Stream Analytics local run output
 ASALocalRun/
 
+# Terraform local caches and state
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
 # MSBuild Binary and Structured Log
 *.binlog
 MSBuild_Logs/
