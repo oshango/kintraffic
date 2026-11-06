@@ -16,12 +16,13 @@ public class TrafficController : ControllerBase
     }
 
     [HttpGet("signals")]
-    public ActionResult<IEnumerable<TrafficSignalDto>> GetSignals() => Ok(_service.GetSignals());
+    public async Task<ActionResult<IEnumerable<TrafficSignalDto>>> GetSignals() =>
+        Ok(await _service.GetSignalsAsync());
 
     [HttpGet("signals/{id}")]
-    public ActionResult<TrafficSignalDto> GetSignalById(string id)
+    public async Task<ActionResult<TrafficSignalDto>> GetSignalById(string id)
     {
-        var signal = _service.GetSignalById(id);
+        var signal = await _service.GetSignalByIdAsync(id);
         return signal is null ? NotFound() : Ok(signal);
     }
 }

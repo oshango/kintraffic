@@ -6,15 +6,15 @@ namespace KinTraffic.Api.Services.Traffic;
 
 public class TrafficService
 {
-    private readonly TrafficRepository _repository;
+    private readonly ITrafficRepository _repository;
 
-    public TrafficService(TrafficRepository repository)
+    public TrafficService(ITrafficRepository repository)
     {
         _repository = repository;
     }
 
-    public IEnumerable<TrafficSignalDto> GetSignals() =>
-        _repository.GetSignals().Select(signal => new TrafficSignalDto
+    public async Task<IEnumerable<TrafficSignalDto>> GetSignalsAsync() =>
+        (await _repository.GetSignalsAsync()).Select(signal => new TrafficSignalDto
         {
             Id = signal.Id,
             Name = signal.Name,
@@ -24,9 +24,9 @@ public class TrafficService
             UpdatedAt = signal.UpdatedAt
         });
 
-    public TrafficSignalDto? GetSignalById(string id)
+    public async Task<TrafficSignalDto?> GetSignalByIdAsync(string id)
     {
-        var signal = _repository.GetSignalById(id);
+        var signal = await _repository.GetSignalByIdAsync(id);
         if (signal is null)
         {
             return null;

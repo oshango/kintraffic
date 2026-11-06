@@ -3,14 +3,15 @@ Traffic Infrastructure Management Platform for monitoring, maintenance and opera
 
 ## Technology
 
-- ASP.NET Core .NET 10
-- Angular
-- SQL Server / Azure SQL
-- SignalR
-- Azure Container Apps
-- Azure Static Web Apps
-- Azure Container Registry
-- GitHub Actions
+- API: ASP.NET Core on .NET 10
+- UI: Angular 22, TypeScript, and Node.js 22
+- Data access: Entity Framework Core 10 migrations
+- Local database: SQL Server 2022 Developer in Docker Compose
+- Production database target: Azure SQL
+- Local Kubernetes testing: Kubernetes manifests with kind
+- Realtime: SignalR (planned; not currently wired into the UI/API)
+- Azure deployment: Azure Container Apps, Azure Static Web Apps, and Azure Container Registry
+- CI/CD: GitHub Actions
 
 ## Modules
 
@@ -25,6 +26,42 @@ Traffic Infrastructure Management Platform for monitoring, maintenance and opera
 - Contracts
 - Invoices
 - Reporting
+
+## Local Docker Development
+
+Run the API, Angular UI, and SQL Server database from the repository root:
+
+```powershell
+docker compose up --build
+```
+
+The UI is available at `http://localhost:4200`, the API at `http://localhost:8080`, and SQL Server at `localhost:1433`. The SQL Server Developer container stores its data in the `kintraffic-sql-data` Docker volume. The API applies EF Core migrations when it starts; traffic signal sample rows are inserted by the initial migration.
+
+Compose requires `MSSQL_SA_PASSWORD`; there is no password default. Set it in PowerShell before starting Compose, or put it in a root `.env` file that must not be committed. For example, replace the placeholder below with your own strong local password:
+
+```powershell
+$env:MSSQL_SA_PASSWORD = "<your-strong-local-password>"
+docker compose up --build
+```
+
+Never use your local password or the SQL Server Developer edition in a production deployment. At this stage, only traffic signals are persisted; the other API repositories still use in-memory data.
+
+### Connect with SQL Server Management Studio
+
+With `docker compose up --build` running, create a new connection using:
+
+| Setting | Value |
+| --- | --- |
+| Server type | Database Engine |
+| Server name | `xxxxxx` |
+| Authentication | SQL Server Authentication |
+| Login | `sa` |
+| Password | The value you set for `MSSQL_SA_PASSWORD` |
+| Database | `KinTraffic` |
+| Encrypt | Mandatory |
+| Trust server certificate | Checked |
+
+In SSMS, the server can also be entered as `127.0.0.1,1433`. If the connection dialog only offers Windows Authentication, change Authentication to SQL Server Authentication. The database is created and migrated automatically when the API starts. Do not use the local development password outside your machine.
 
 ## Commit Naming Convention
 

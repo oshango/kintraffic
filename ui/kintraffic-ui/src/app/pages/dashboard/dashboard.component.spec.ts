@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { TrafficService } from '../../services/traffic.service';
@@ -27,7 +28,7 @@ describe('DashboardComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
-      providers: [{ provide: TrafficService, useValue: trafficService }],
+      providers: [provideRouter([]), { provide: TrafficService, useValue: trafficService }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DashboardComponent);
@@ -42,5 +43,9 @@ describe('DashboardComponent', () => {
   it('should load signals on init', () => {
     expect(trafficService.getSignals).toHaveBeenCalled();
     expect(component.signals.length).toBe(1);
+    expect(component.attentionCount).toBe(0);
+    expect(component.averageQueue).toBe(14);
+    expect(component.longestQueue).toBe(14);
+    expect(fixture.nativeElement.textContent).toContain('Intersection signals');
   });
 });

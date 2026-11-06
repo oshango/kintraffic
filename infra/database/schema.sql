@@ -5,6 +5,15 @@ CREATE TABLE Junctions (
     CreatedAt DATETIME DEFAULT GETDATE()
 );
 
+CREATE TABLE TrafficSignals (
+    Id NVARCHAR(64) PRIMARY KEY,
+    Name NVARCHAR(200) NOT NULL,
+    Status NVARCHAR(32) NOT NULL,
+    CycleTime INT NOT NULL,
+    QueueLength INT NOT NULL,
+    UpdatedAt DATETIME2 NOT NULL
+);
+
 CREATE TABLE RoadSegments (
     Id INT IDENTITY PRIMARY KEY,
     Name NVARCHAR(150) NOT NULL,
