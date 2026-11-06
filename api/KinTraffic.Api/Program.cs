@@ -14,6 +14,8 @@ using KinTraffic.Api.Services.Faults;
 using KinTraffic.Api.Services.Inventory;
 using KinTraffic.Api.Services.Traffic;
 using KinTraffic.Api.Services.WorkOrders;
+using KinTraffic.Api.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +63,13 @@ builder.Services.AddScoped<AuditRepository>();
 builder.Services.AddScoped<AuditService>();
 
 var app = builder.Build();
+
+if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+{
+	await using var scope = app.Services.CreateAsyncScope();
+	var dbContext = scope.ServiceProvider.GetRequiredService<KinTrafficDbContext>();
+	await dbContext.Database.MigrateAsync();
+}
 
 app.MapOpenApi();
 app.UseCors("Frontend");

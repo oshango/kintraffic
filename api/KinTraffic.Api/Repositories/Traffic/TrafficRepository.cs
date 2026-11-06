@@ -2,7 +2,7 @@ using KinTraffic.Api.Models;
 
 namespace KinTraffic.Api.Repositories.Traffic;
 
-public class TrafficRepository
+public class TrafficRepository : ITrafficRepository
 {
     private readonly List<TrafficSignal> _signals =
     [
@@ -26,7 +26,9 @@ public class TrafficRepository
         }
     ];
 
-    public IEnumerable<TrafficSignal> GetSignals() => _signals;
+    public Task<IReadOnlyList<TrafficSignal>> GetSignalsAsync() =>
+        Task.FromResult<IReadOnlyList<TrafficSignal>>(_signals);
 
-    public TrafficSignal? GetSignalById(string id) => _signals.FirstOrDefault(signal => signal.Id == id);
+    public Task<TrafficSignal?> GetSignalByIdAsync(string id) =>
+        Task.FromResult(_signals.FirstOrDefault(signal => signal.Id == id));
 }
