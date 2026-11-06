@@ -1,27 +1,60 @@
-<div class="app-shell">
+<div [class]="isSidebarCollapsed() ? 'app-shell sidebar-collapsed' : 'app-shell'">
   <aside class="sidebar" aria-label="Primary navigation">
-    <a class="brand" routerLink="/" aria-label="KinTraffic home">
-      <span class="brand-mark" aria-hidden="true">K</span>
-      <span>KINTRAFFIC</span>
-    </a>
+    <div class="sidebar-heading">
+      <a class="brand" routerLink="/" aria-label="KinTraffic home" title="KinTraffic">
+        <span class="brand-mark" aria-hidden="true">K</span>
+        <span class="brand-name">KINTRAFFIC</span>
+      </a>
+      <button
+        class="sidebar-toggle"
+        type="button"
+        (click)="toggleSidebar()"
+        [attr.aria-expanded]="!isSidebarCollapsed()"
+        [attr.aria-label]="isSidebarCollapsed() ? 'Expand navigation' : 'Collapse navigation'"
+        [title]="isSidebarCollapsed() ? 'Expand navigation' : 'Collapse navigation'"
+      >
+        @if (isSidebarCollapsed()) {
+          <svg lucidePanelLeftOpen [size]="18" aria-hidden="true"></svg>
+        } @else {
+          <svg lucidePanelLeftClose [size]="18" aria-hidden="true"></svg>
+        }
+      </button>
+    </div>
 
     <p class="nav-label">OPERATIONS</p>
     <nav class="nav-list">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        <span class="nav-index">01</span> Overview
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" title="Overview">
+        <svg lucideLayoutDashboard [size]="18" aria-hidden="true"></svg><span>Overview</span>
       </a>
-      <a routerLink="/assets" routerLinkActive="active"><span class="nav-index">02</span> Assets</a>
-      <a routerLink="/faults" routerLinkActive="active"><span class="nav-index">03</span> Faults</a>
-      <a routerLink="/work-orders" routerLinkActive="active"><span class="nav-index">04</span> Work orders</a>
-      <a routerLink="/inventory" routerLinkActive="active"><span class="nav-index">05</span> Inventory</a>
-      <a routerLink="/contracts" routerLinkActive="active"><span class="nav-index">06</span> Contracts</a>
-      <a routerLink="/billing" routerLinkActive="active"><span class="nav-index">07</span> Billing</a>
-      <a routerLink="/audit" routerLinkActive="active"><span class="nav-index">08</span> Audit log</a>
+      <a routerLink="/assets" routerLinkActive="active" title="Assets">
+        <svg lucideTrafficCone [size]="18" aria-hidden="true"></svg><span>Assets</span>
+      </a>
+      <a routerLink="/faults" routerLinkActive="active" title="Faults">
+        <svg lucideAlertTriangle [size]="18" aria-hidden="true"></svg><span>Faults</span>
+      </a>
+      <a routerLink="/work-orders" routerLinkActive="active" title="Work orders">
+        <svg lucideClipboardList [size]="18" aria-hidden="true"></svg><span>Work orders</span>
+      </a>
+      <a routerLink="/inventory" routerLinkActive="active" title="Inventory">
+        <svg lucidePackage [size]="18" aria-hidden="true"></svg><span>Inventory</span>
+      </a>
+      <a routerLink="/contracts" routerLinkActive="active" title="Contracts">
+        <svg lucideFileSignature [size]="18" aria-hidden="true"></svg><span>Contracts</span>
+      </a>
+      <a routerLink="/billing" routerLinkActive="active" title="Billing">
+        <svg lucideReceiptText [size]="18" aria-hidden="true"></svg><span>Billing</span>
+      </a>
+      <a routerLink="/audit" routerLinkActive="active" title="Audit log">
+        <svg lucideScrollText [size]="18" aria-hidden="true"></svg><span>Audit log</span>
+      </a>
     </nav>
 
     <div class="sidebar-footer">
-      <span>Service checks</span>
-      <a routerLink="/health">Health <span aria-hidden="true">↗</span></a>
+      <a class="health-link" routerLink="/health" title="Service health">
+        <svg lucideActivity [size]="18" aria-hidden="true"></svg>
+        <span>Service health</span>
+        <svg class="external-icon" lucideArrowUpRight [size]="14" aria-hidden="true"></svg>
+      </a>
     </div>
   </aside>
 
