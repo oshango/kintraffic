@@ -36,17 +36,6 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<TrafficRepository>();
 builder.Services.AddScoped<TrafficService>();
-var databaseConnectionString = builder.Configuration.GetConnectionString("KinTraffic");
-if (string.IsNullOrWhiteSpace(databaseConnectionString))
-{
-	builder.Services.AddScoped<ITrafficRepository, TrafficRepository>();
-}
-else
-{
-	builder.Services.AddDbContext<KinTrafficDbContext>(options =>
-		options.UseSqlServer(databaseConnectionString));
-	builder.Services.AddScoped<ITrafficRepository, SqlTrafficRepository>();
-}
 builder.Services.AddScoped<RoadSegmentRepository>();
 builder.Services.AddScoped<RoadSegmentService>();
 builder.Services.AddScoped<TrafficStateRepository>();

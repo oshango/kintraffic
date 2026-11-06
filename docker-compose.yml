@@ -33,6 +33,13 @@ services:
 
   ui:
     image: kintraffic-ui:latest
+  api:
+    build:
+      context: ./api/KinTraffic.Api
+    ports:
+      - "8080:8080"
+
+  ui:
     build:
       context: ./ui/kintraffic-ui
     ports:
@@ -42,3 +49,4 @@ services:
 
 volumes:
   kintraffic-sql-data:
+      - api

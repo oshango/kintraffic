@@ -3,15 +3,14 @@ Traffic Infrastructure Management Platform for monitoring, maintenance and opera
 
 ## Technology
 
-- API: ASP.NET Core on .NET 10
-- UI: Angular 22, TypeScript, and Node.js 22
-- Data access: Entity Framework Core 10 migrations
-- Local database: SQL Server 2022 Developer in Docker Compose
-- Production database target: Azure SQL
-- Local Kubernetes testing: Kubernetes manifests with kind
-- Realtime: SignalR (planned; not currently wired into the UI/API)
-- Azure deployment: Azure Container Apps, Azure Static Web Apps, and Azure Container Registry
-- CI/CD: GitHub Actions
+- ASP.NET Core .NET 10
+- Angular
+- SQL Server / Azure SQL
+- SignalR
+- Azure Container Apps
+- Azure Static Web Apps
+- Azure Container Registry
+- GitHub Actions
 
 ## Modules
 
