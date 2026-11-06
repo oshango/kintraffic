@@ -34,6 +34,18 @@ builder.Services.AddCors(options =>
 	});
 });
 
+var databaseConnectionString = builder.Configuration.GetConnectionString("KinTraffic");
+if (string.IsNullOrWhiteSpace(databaseConnectionString))
+{
+	builder.Services.AddScoped<ITrafficRepository, TrafficRepository>();
+}
+else
+{
+	builder.Services.AddDbContext<KinTrafficDbContext>(options =>
+		options.UseSqlServer(databaseConnectionString));
+	builder.Services.AddScoped<ITrafficRepository, SqlTrafficRepository>();
+}
+
 builder.Services.AddScoped<TrafficRepository>();
 builder.Services.AddScoped<TrafficService>();
 builder.Services.AddScoped<RoadSegmentRepository>();
