@@ -17,8 +17,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\KinTraffic.Api\KinTraffic.Api.csproj" />
-  </ItemGroup>
-
 </Project>
