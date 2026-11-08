@@ -44,7 +44,7 @@ jobs:
         retention-days: 7
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_PRODUCTION_DEPLOYMENT == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment: production
