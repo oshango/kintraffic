@@ -12,13 +12,13 @@ public class BillingService
         _repository = repository;
     }
 
-    public IEnumerable<InvoiceDto> GetInvoices() =>
-        _repository.GetInvoices().Select(invoice => new InvoiceDto
+    public async Task<IReadOnlyList<InvoiceDto>> GetInvoicesAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetInvoicesAsync(cancellationToken)).Select(invoice => new InvoiceDto
         {
             Id = invoice.Id,
             ContractId = invoice.ContractId,
             Amount = invoice.Amount,
             IssuedAt = invoice.IssuedAt,
             Status = invoice.Status
-        });
+        }).ToList();
 }

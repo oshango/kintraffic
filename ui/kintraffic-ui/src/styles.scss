@@ -1,1 +1,387 @@
-/* You can add global styles to this file, and also import other style files */
+* {
+	box-sizing: border-box;
+}
+
+html {
+	min-width: 320px;
+	background: #f3f5f0;
+}
+
+body {
+	margin: 0;
+	color: #1d2c27;
+	font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+
+app-root {
+	display: block;
+	min-height: 100dvh;
+}
+
+.app-shell {
+	display: grid;
+	grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+	min-height: 100dvh;
+	min-width: 0;
+	--sidebar-width: 248px;
+	transition: grid-template-columns 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sidebar-heading {
+	display: flex;
+	min-height: 38px;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.sidebar {
+	position: sticky;
+	top: 0;
+	align-self: start;
+	display: flex;
+	width: 100%;
+	height: 100dvh;
+	min-width: 0;
+	flex-direction: column;
+	padding: 22px 14px 18px;
+	color: #e8eee8;
+	background: #182b27;
+	overflow: hidden;
+	transition: padding 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	min-width: 0;
+	color: inherit;
+	font-size: 13px;
+	font-weight: 750;
+	letter-spacing: 1.4px;
+	text-decoration: none;
+}
+
+.brand-mark {
+	display: grid;
+	width: 36px;
+	flex: 0 0 36px;
+	aspect-ratio: 1;
+	place-items: center;
+	color: #182b27;
+	background: #c9e36a;
+	font-family: Georgia, serif;
+	font-size: 22px;
+	font-weight: 700;
+}
+
+.brand-name {
+	max-width: 160px;
+	overflow: hidden;
+	opacity: 1;
+	transition: max-width 200ms ease, opacity 140ms ease, visibility 0s linear 200ms;
+	white-space: nowrap;
+}
+
+.sidebar-toggle {
+	display: grid;
+	width: 34px;
+	flex: 0 0 34px;
+	aspect-ratio: 1;
+	place-items: center;
+	border: 1px solid #ffffff1a;
+	color: #c2cec7;
+	background: transparent;
+	cursor: pointer;
+	transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.sidebar-toggle:hover,
+.sidebar-toggle:focus-visible {
+	border-color: #c9e36a66;
+	color: #c9e36a;
+	background: #ffffff0a;
+}
+
+.sidebar-toggle:focus-visible,
+.nav-list a:focus-visible,
+.health-link:focus-visible {
+	outline: 2px solid #c9e36a;
+	outline-offset: 2px;
+}
+
+.nav-label {
+	max-height: 24px;
+	margin: 42px 10px 12px;
+	overflow: hidden;
+	opacity: 1;
+	color: #8d9e97;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 1.2px;
+	transition: max-height 200ms ease, margin 200ms ease, opacity 140ms ease, visibility 0s linear 200ms;
+}
+
+.nav-list {
+	display: grid;
+	gap: 4px;
+}
+
+.nav-list a {
+	display: flex;
+	min-height: 44px;
+	align-items: center;
+	gap: 13px;
+	padding: 0 12px;
+	border-left: 2px solid transparent;
+	color: #b7c3bd;
+	font-size: 13px;
+	font-weight: 550;
+	text-decoration: none;
+	transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.nav-list a svg,
+.health-link svg {
+	flex: 0 0 auto;
+}
+
+.nav-list a:hover,
+.nav-list a.active {
+	border-left-color: #c9e36a;
+	color: #fff;
+	background: #263d36;
+}
+
+.nav-list a span,
+.health-link span {
+	max-width: 160px;
+	overflow: hidden;
+	opacity: 1;
+	transition: max-width 200ms ease, opacity 140ms ease, visibility 0s linear 200ms;
+	white-space: nowrap;
+}
+
+.sidebar-footer {
+	margin-top: auto;
+	padding: 12px 0 0;
+	border-top: 1px solid #344740;
+}
+
+.health-link {
+	display: flex;
+	min-height: 42px;
+	align-items: center;
+	gap: 13px;
+	padding: 0 12px;
+	color: #c9e36a;
+	font-size: 12px;
+	text-decoration: none;
+}
+
+.external-icon {
+	margin-left: auto;
+}
+
+.sidebar-collapsed {
+	--sidebar-width: 76px;
+}
+
+.sidebar-collapsed .sidebar {
+	padding-inline: 12px;
+}
+
+.sidebar-collapsed .sidebar-heading {
+	flex-direction: column;
+	justify-content: center;
+	gap: 10px;
+}
+
+.sidebar-collapsed .brand-name,
+.sidebar-collapsed .nav-list a span,
+.sidebar-collapsed .health-link span {
+	max-width: 0;
+	opacity: 0;
+	visibility: hidden;
+	transition-delay: 0s;
+}
+
+.sidebar-collapsed .nav-label {
+	max-height: 0;
+	margin-block: 0;
+	opacity: 0;
+	visibility: hidden;
+	transition-delay: 0s;
+}
+
+.sidebar-collapsed .external-icon {
+	display: none;
+}
+
+.sidebar-collapsed .brand {
+	justify-content: center;
+}
+
+.sidebar-collapsed .sidebar-toggle {
+	order: -1;
+}
+
+.sidebar-collapsed .nav-list a,
+.sidebar-collapsed .health-link {
+	justify-content: center;
+	gap: 0;
+	padding-inline: 0;
+}
+
+.main-panel {
+	min-width: 0;
+	min-height: 100dvh;
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	width: 100%;
+	min-height: 58px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 36px;
+	border-bottom: 1px solid #e1e6df;
+	color: #65726d;
+	background: #fff;
+	box-shadow: 0 1px 0 #e1e6df;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.9px;
+}
+
+.topbar a {
+	color: #263d36;
+	font-size: 12px;
+	letter-spacing: 0;
+	text-decoration: none;
+}
+
+.topbar-divider {
+	padding: 0 7px;
+	color: #a4afa8;
+}
+
+@media (max-width: 760px) {
+	.app-shell {
+		display: block;
+		min-height: 100dvh;
+	}
+
+	.sidebar,
+	.sidebar-collapsed .sidebar {
+		position: static;
+		width: auto;
+		height: auto;
+		min-height: auto;
+		padding: 12px 14px 8px;
+		overflow: visible;
+	}
+
+	.sidebar-heading {
+		justify-content: flex-start;
+	}
+
+	.sidebar-toggle {
+		margin-left: auto;
+	}
+
+	.nav-label {
+		display: none;
+	}
+
+	.nav-list {
+		display: flex;
+		gap: 3px;
+		margin-top: 10px;
+		overflow-x: auto;
+		padding-bottom: 2px;
+		scrollbar-width: none;
+	}
+
+	.nav-list::-webkit-scrollbar {
+		display: none;
+	}
+
+	.nav-list a {
+		min-height: 40px;
+		flex: 0 0 auto;
+		gap: 8px;
+		padding: 0 11px;
+		border: 0;
+		border-bottom: 2px solid transparent;
+		font-size: 12px;
+	}
+
+	.nav-list a:hover,
+	.nav-list a.active {
+		border-bottom-color: #c9e36a;
+	}
+
+	.sidebar-footer {
+		display: none;
+	}
+
+	.sidebar-collapsed .sidebar-heading {
+		flex-direction: row;
+		justify-content: flex-start;
+		gap: 0;
+	}
+
+	.sidebar-collapsed .brand-name,
+	.sidebar-collapsed .nav-list a span {
+		max-width: 160px;
+		opacity: 1;
+		visibility: visible;
+		transition-delay: 0s;
+	}
+
+	.sidebar-collapsed .brand {
+		justify-content: flex-start;
+	}
+
+	.sidebar-collapsed .sidebar-toggle {
+		order: 0;
+	}
+
+	.sidebar-collapsed .nav-list a {
+		justify-content: flex-start;
+		gap: 8px;
+		padding-inline: 11px;
+	}
+
+	.topbar {
+		z-index: 4;
+		min-height: 46px;
+		padding: 0 16px;
+		font-size: 9px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.app-shell,
+	.sidebar,
+	.brand-name,
+	.nav-label,
+	.nav-list a,
+	.nav-list a span,
+	.health-link span,
+	.sidebar-toggle {
+		transition-duration: 0.01ms;
+	}
+}

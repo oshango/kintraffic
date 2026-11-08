@@ -14,6 +14,8 @@ using KinTraffic.Api.Services.Faults;
 using KinTraffic.Api.Services.Inventory;
 using KinTraffic.Api.Services.Traffic;
 using KinTraffic.Api.Services.WorkOrders;
+using KinTraffic.Api.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +34,15 @@ builder.Services.AddCors(options =>
 	});
 });
 
-builder.Services.AddScoped<TrafficRepository>();
+var databaseConnectionString = builder.Configuration.GetConnectionString("KinTraffic");
+if (string.IsNullOrWhiteSpace(databaseConnectionString))
+{
+	throw new InvalidOperationException("ConnectionStrings:KinTraffic must be configured for SQL Server persistence.");
+}
+
+builder.Services.AddDbContext<KinTrafficDbContext>(options =>
+	options.UseSqlServer(databaseConnectionString));
+builder.Services.AddScoped<ITrafficRepository, SqlTrafficRepository>();
 builder.Services.AddScoped<TrafficService>();
 builder.Services.AddScoped<RoadSegmentRepository>();
 builder.Services.AddScoped<RoadSegmentService>();
@@ -61,6 +71,12 @@ builder.Services.AddScoped<AuditRepository>();
 builder.Services.AddScoped<AuditService>();
 
 var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+	var dbContext = scope.ServiceProvider.GetRequiredService<KinTrafficDbContext>();
+	await dbContext.Database.MigrateAsync();
+}
 
 app.MapOpenApi();
 app.UseCors("Frontend");

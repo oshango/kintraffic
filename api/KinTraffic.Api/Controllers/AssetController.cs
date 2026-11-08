@@ -16,5 +16,6 @@ public class AssetController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<AssetDto>> GetAssets() => Ok(_service.GetAssets());
+    public async Task<ActionResult<IEnumerable<AssetDto>>> GetAssets(CancellationToken cancellationToken) =>
+        Ok(await _service.GetAssetsAsync(cancellationToken));
 }

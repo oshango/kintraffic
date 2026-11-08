@@ -16,5 +16,6 @@ public class FaultController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<FaultDto>> GetFaults() => Ok(_service.GetFaults());
+    public async Task<ActionResult<IEnumerable<FaultDto>>> GetFaults(CancellationToken cancellationToken) =>
+        Ok(await _service.GetFaultsAsync(cancellationToken));
 }
