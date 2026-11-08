@@ -12,8 +12,8 @@ public class ContractService
         _repository = repository;
     }
 
-    public IEnumerable<ContractDto> GetContracts() =>
-        _repository.GetContracts().Select(contract => new ContractDto
+    public async Task<IReadOnlyList<ContractDto>> GetContractsAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetContractsAsync(cancellationToken)).Select(contract => new ContractDto
         {
             Id = contract.Id,
             VendorName = contract.VendorName,
@@ -21,5 +21,5 @@ public class ContractService
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             Status = contract.Status
-        });
+        }).ToList();
 }

@@ -1,21 +1,14 @@
 using KinTraffic.Api.Models;
+using KinTraffic.Api.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace KinTraffic.Api.Repositories.Contracts;
 
-public class ContractRepository
+public class ContractRepository(KinTrafficDbContext dbContext)
 {
-    private readonly List<Contract> _contracts =
-    [
-        new Contract
-        {
-            Id = "contract-201",
-            VendorName = "SignalWorks Ltd",
-            ServiceType = "Preventive Maintenance",
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = new DateTime(2026, 12, 31),
-            Status = "active"
-        }
-    ];
-
-    public IEnumerable<Contract> GetContracts() => _contracts;
+    public async Task<IReadOnlyList<Contract>> GetContractsAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.Contracts
+            .AsNoTracking()
+            .OrderBy(contract => contract.StartDate)
+            .ToListAsync(cancellationToken);
 }

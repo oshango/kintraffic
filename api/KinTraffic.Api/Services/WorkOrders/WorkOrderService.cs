@@ -12,8 +12,8 @@ public class WorkOrderService
         _repository = repository;
     }
 
-    public IEnumerable<WorkOrderDto> GetWorkOrders() =>
-        _repository.GetWorkOrders().Select(workOrder => new WorkOrderDto
+    public async Task<IReadOnlyList<WorkOrderDto>> GetWorkOrdersAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetWorkOrdersAsync(cancellationToken)).Select(workOrder => new WorkOrderDto
         {
             Id = workOrder.Id,
             FaultId = workOrder.FaultId,
@@ -21,5 +21,5 @@ public class WorkOrderService
             Status = workOrder.Status,
             Priority = workOrder.Priority,
             ScheduledFor = workOrder.ScheduledFor
-        });
+        }).ToList();
 }

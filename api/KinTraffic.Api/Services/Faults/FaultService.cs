@@ -12,15 +12,15 @@ public class FaultService
         _repository = repository;
     }
 
-    public IEnumerable<FaultDto> GetFaults() =>
-        _repository.GetFaults().Select(fault => new FaultDto
+    public async Task<IReadOnlyList<FaultDto>> GetFaultsAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetFaultsAsync(cancellationToken)).Select(fault => new FaultDto
         {
             Id = fault.Id,
-            JunctionId = fault.JunctionId,
-            AssetId = fault.AssetId,
+            JunctionId = fault.Device.JunctionId,
+            AssetId = fault.DeviceId,
             Severity = fault.Severity,
             Status = fault.Status,
             Description = fault.Description,
             CreatedAt = fault.CreatedAt
-        });
+        }).ToList();
 }

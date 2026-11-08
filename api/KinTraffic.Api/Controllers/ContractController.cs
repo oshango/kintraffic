@@ -16,5 +16,6 @@ public class ContractController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<ContractDto>> GetContracts() => Ok(_service.GetContracts());
+    public async Task<ActionResult<IEnumerable<ContractDto>>> GetContracts(CancellationToken cancellationToken) =>
+        Ok(await _service.GetContractsAsync(cancellationToken));
 }

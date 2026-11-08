@@ -37,16 +37,12 @@ builder.Services.AddCors(options =>
 var databaseConnectionString = builder.Configuration.GetConnectionString("KinTraffic");
 if (string.IsNullOrWhiteSpace(databaseConnectionString))
 {
-	builder.Services.AddScoped<ITrafficRepository, TrafficRepository>();
-}
-else
-{
-	builder.Services.AddDbContext<KinTrafficDbContext>(options =>
-		options.UseSqlServer(databaseConnectionString));
-	builder.Services.AddScoped<ITrafficRepository, SqlTrafficRepository>();
+	throw new InvalidOperationException("ConnectionStrings:KinTraffic must be configured for SQL Server persistence.");
 }
 
-builder.Services.AddScoped<TrafficRepository>();
+builder.Services.AddDbContext<KinTrafficDbContext>(options =>
+	options.UseSqlServer(databaseConnectionString));
+builder.Services.AddScoped<ITrafficRepository, SqlTrafficRepository>();
 builder.Services.AddScoped<TrafficService>();
 builder.Services.AddScoped<RoadSegmentRepository>();
 builder.Services.AddScoped<RoadSegmentService>();
@@ -76,9 +72,8 @@ builder.Services.AddScoped<AuditService>();
 
 var app = builder.Build();
 
-if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+await using (var scope = app.Services.CreateAsyncScope())
 {
-	await using var scope = app.Services.CreateAsyncScope();
 	var dbContext = scope.ServiceProvider.GetRequiredService<KinTrafficDbContext>();
 	await dbContext.Database.MigrateAsync();
 }

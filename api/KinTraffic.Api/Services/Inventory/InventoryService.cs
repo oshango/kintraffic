@@ -12,8 +12,8 @@ public class InventoryService
         _repository = repository;
     }
 
-    public IEnumerable<InventoryItemDto> GetInventory() =>
-        _repository.GetInventory().Select(item => new InventoryItemDto
+    public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetInventoryAsync(cancellationToken)).Select(item => new InventoryItemDto
         {
             Id = item.Id,
             Sku = item.Sku,
@@ -21,5 +21,5 @@ public class InventoryService
             QuantityOnHand = item.QuantityOnHand,
             Location = item.Location,
             ReorderLevel = item.ReorderLevel
-        });
+        }).ToList();
 }

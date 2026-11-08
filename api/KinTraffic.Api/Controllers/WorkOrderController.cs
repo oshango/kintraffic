@@ -16,5 +16,6 @@ public class WorkOrderController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<WorkOrderDto>> GetWorkOrders() => Ok(_service.GetWorkOrders());
+    public async Task<ActionResult<IEnumerable<WorkOrderDto>>> GetWorkOrders(CancellationToken cancellationToken) =>
+        Ok(await _service.GetWorkOrdersAsync(cancellationToken));
 }

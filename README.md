@@ -26,6 +26,12 @@ Traffic Infrastructure Management Platform for monitoring, maintenance and opera
 - Invoices
 - Reporting
 
+## Persistence
+
+The API requires the `ConnectionStrings:KinTraffic` SQL Server connection string; there is no in-memory fallback. Docker Compose supplies it from the git-ignored root `.env` file. When running the API outside Compose, set `ConnectionStrings__KinTraffic` through a local environment variable or user-secrets store; do not commit credentials.
+
+EF Core migrations in `api/KinTraffic.Api/Migrations` are the executable schema source and are applied when the API starts. `infra/database/schema.sql` is a reference copy only and must not be executed against a migration-managed database. Operational IDs remain strings to preserve existing API identifiers; RoadSegment and TrafficState IDs remain integers. SQL `datetime2` defaults use UTC. Only the pre-existing TrafficSignal sample rows are migration-seeded; other tables start empty.
+
 ## Local Docker Development
 
 Run the API, Angular UI, and SQL Server database from the repository root:
@@ -45,7 +51,7 @@ $env:MSSQL_SA_PASSWORD = "<your-strong-local-password>"
 docker compose up --build
 ```
 
-Never use your local password or the SQL Server Developer edition in a production deployment. At this stage, only traffic signals are persisted; the other API repositories still use in-memory data.
+Never use your local password or the SQL Server Developer edition in a production deployment. Tables other than TrafficSignals start empty; current read-only list endpoints return empty collections until approved data imports or later write workflows populate them.
 
 If the existing Docker database volume has an unknown `sa` password, run `scripts/start-fresh-local-db.ps1 -RotatePassword` from PowerShell. It rotates the exposed local password in the git-ignored root `.env` file, checks that Compose resolves the same password, stops and recreates the Compose containers, and waits for SQL Server health on the new `kintraffic-sql-data-v3` volume. It does not delete the previous `kintraffic_kintraffic-sql-data` or `kintraffic_kintraffic-sql-data-v2` volumes. They remain available for recovery; do not run `docker compose down -v` if you need to preserve them. For SSMS, connect to the Docker database at `localhost,1433` with SQL Server Authentication and the password in `.env`. `(localdb)\\MSSQLLocalDB` is a separate Windows LocalDB instance, not the Docker database.
 

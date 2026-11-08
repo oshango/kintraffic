@@ -9,8 +9,8 @@ public class TrafficStateService
 
     public TrafficStateService(TrafficStateRepository repository) => _repository = repository;
 
-    public IEnumerable<TrafficStateDto> GetTrafficStates() =>
-        _repository.GetTrafficStates().Select(state => new TrafficStateDto
+    public async Task<IReadOnlyList<TrafficStateDto>> GetTrafficStatesAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetTrafficStatesAsync(cancellationToken)).Select(state => new TrafficStateDto
         {
             Id = state.Id,
             RoadSegmentId = state.RoadSegmentId,
@@ -18,5 +18,5 @@ public class TrafficStateService
             AverageSpeedKph = state.AverageSpeedKph,
             VehicleCount = state.VehicleCount,
             RecordedAt = state.RecordedAt
-        });
+        }).ToList();
 }

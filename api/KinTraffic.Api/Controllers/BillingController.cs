@@ -16,5 +16,6 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("invoices")]
-    public ActionResult<IEnumerable<InvoiceDto>> GetInvoices() => Ok(_service.GetInvoices());
+    public async Task<ActionResult<IEnumerable<InvoiceDto>>> GetInvoices(CancellationToken cancellationToken) =>
+        Ok(await _service.GetInvoicesAsync(cancellationToken));
 }
