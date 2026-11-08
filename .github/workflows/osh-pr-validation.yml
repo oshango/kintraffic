@@ -17,19 +17,10 @@ jobs:
           script: |
             const title = context.payload.pull_request.title.trim();
 
-            const valid = /^(feat|fix|chore):\s+OSH-\d+:\s+\S.*$/i.test(title);
+            const valid = /^(feat|fix):\s+OSH-\d+:\s+\S.*$/i.test(title);
 
             if (!valid) {
-              core.setFailed(
-                `Invalid PR title format.
-
-                Expected:
-                feat: OSH-<number>: <description>
-                fix: OSH-<number>: <description>
-                chore: OSH-<number>: <description>
-
-                Got: ${JSON.stringify(title)}`
-              );
+              core.setFailed(`Invalid PR title format. Expected: feat: OSH-<number>: <description> or fix: OSH-<number>: <description>. Got: ${JSON.stringify(title)}`);
             }
 
       - name: Validate branch name
@@ -40,23 +31,12 @@ jobs:
           script: |
             const branch = context.payload.pull_request.head.ref;
 
-            const valid =
-              /^(?:main|develop|feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure)|chore\/[a-z0-9-]+|hotfix\/[a-z0-9-]+)$/i
-              .test(branch);
+            const valid = /^(?:main|develop|feature\/(?:OSH-\d+-[a-z0-9-]+|project-structure))$/.test(branch);
 
             if (!valid) {
-              core.setFailed(
-                `Invalid branch name.
-
-                Expected:
-                - main
-                - develop
-                - feature/OSH-<number>-<slug>
-                - chore/<slug>
-                - hotfix/<slug>
-
-                Got: ${branch}`
-              );
+              core.setFailed(`Invalid branch name.
+              Expected: main, develop, or feature/OSH-<number>-<slug>
+              Got: ${branch}`);
             }
 
       - name: Validate OSH link in body
@@ -70,12 +50,9 @@ jobs:
             const valid = /Linked OSH/i.test(body);
 
             if (!valid) {
-              core.setFailed(
-                `PR body missing OSH link.
-
-                Expected section:
-                ## Linked OSH`
-              );
+              core.setFailed(`PR body missing OSH link.
+              Expected section:
+              "## Linked OSH"`);
             }
 
       - name: Add labels

@@ -23,12 +23,20 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              labels: ["OSH", "todo"]
-            });
+            const { owner, repo } = context.repo;
+            const issueNumber = context.payload.issue.number;
+            const stateLabels = ["todo", "in-progress", "in-review", "done"];
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+            for (const label of issue.labels.map(item => item.name)) {
+              if (stateLabels.includes(label) && label !== "todo") {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: label });
+              }
+            }
+            const labels = new Set(issue.labels.map(item => item.name));
+            const missing = ["OSH", "todo"].filter(label => !labels.has(label));
+            if (missing.length) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: missing });
+            }
 
   move-to-in-progress:
     if: github.event_name == 'push'
@@ -41,19 +49,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const branch = context.ref.replace("refs/heads/", "");
-            const match = branch.match(/OSH-(\d+)/);
+            const match = branch.match(/(?:^|\/)OSH-(\d+)(?:-|$)/);
             if (!match) return;
 
             const oshNumber = match[1];
 
-            const issues = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open",
               per_page: 100
             });
 
-            const issue = issues.data.find(i => i.title.startsWith(`OSH-${oshNumber}`));
+            const exactTitle = new RegExp(`^OSH-${oshNumber}(?:\\s|$|[-—])`, "i");
+            const issue = issues.find(i => !i.pull_request && exactTitle.test(i.title));
             if (issue) core.setOutput("issue_number", issue.number);
 
       - name: Move issue to In Progress
@@ -64,12 +73,20 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
-              labels: ["OSH", "in-progress"]
-            });
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const stateLabels = ["todo", "in-progress", "in-review", "done"];
+            const target = "in-progress";
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+            for (const label of issue.labels.map(item => item.name)) {
+              if (stateLabels.includes(label) && label !== target) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: label });
+              }
+            }
+            if (!issue.labels.some(item => item.name === target)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [target] });
+            }
 
   move-to-in-review:
     if: github.event_name == 'pull_request' && github.event.action == 'opened'
@@ -82,19 +99,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const title = context.payload.pull_request.title;
-            const match = title.match(/OSH-(\d+)/);
+            const match = title.match(/OSH-(\d+)(?=\D|$)/);
             if (!match) return;
 
             const oshNumber = match[1];
 
-            const issues = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open",
               per_page: 100
             });
 
-            const issue = issues.data.find(i => i.title.startsWith(`OSH-${oshNumber}`));
+            const exactTitle = new RegExp(`^OSH-${oshNumber}(?:\\s|$|[-—])`, "i");
+            const issue = issues.find(i => !i.pull_request && exactTitle.test(i.title));
             if (issue) core.setOutput("issue_number", issue.number);
 
       - name: Move issue to In Review
@@ -105,12 +123,20 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
-              labels: ["OSH", "in-review"]
-            });
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const stateLabels = ["todo", "in-progress", "in-review", "done"];
+            const target = "in-review";
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+            for (const label of issue.labels.map(item => item.name)) {
+              if (stateLabels.includes(label) && label !== target) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: label });
+              }
+            }
+            if (!issue.labels.some(item => item.name === target)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [target] });
+            }
 
   move-to-done:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
@@ -123,19 +149,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const title = context.payload.pull_request.title;
-            const match = title.match(/OSH-(\d+)/);
+            const match = title.match(/OSH-(\d+)(?=\D|$)/);
             if (!match) return;
 
             const oshNumber = match[1];
 
-            const issues = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open",
               per_page: 100
             });
 
-            const issue = issues.data.find(i => i.title.startsWith(`OSH-${oshNumber}`));
+            const exactTitle = new RegExp(`^OSH-${oshNumber}(?:\\s|$|[-—])`, "i");
+            const issue = issues.find(i => !i.pull_request && exactTitle.test(i.title));
             if (issue) core.setOutput("issue_number", issue.number);
 
       - name: Move issue to Done
@@ -146,9 +173,17 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
-              labels: ["OSH", "done"]
-            });
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const stateLabels = ["todo", "in-progress", "in-review", "done"];
+            const target = "done";
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+            for (const label of issue.labels.map(item => item.name)) {
+              if (stateLabels.includes(label) && label !== target) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: label });
+              }
+            }
+            if (!issue.labels.some(item => item.name === target)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [target] });
+            }
