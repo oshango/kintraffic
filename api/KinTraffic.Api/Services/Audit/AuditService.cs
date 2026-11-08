@@ -12,13 +12,13 @@ public class AuditService
         _repository = repository;
     }
 
-    public IEnumerable<AuditLogDto> GetLogs() =>
-        _repository.GetLogs().Select(log => new AuditLogDto
+    public async Task<IReadOnlyList<AuditLogDto>> GetLogsAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetLogsAsync(cancellationToken)).Select(log => new AuditLogDto
         {
             Id = log.Id,
             Entity = log.Entity,
             Action = log.Action,
             Actor = log.Actor,
             OccurredAt = log.OccurredAt
-        });
+        }).ToList();
 }

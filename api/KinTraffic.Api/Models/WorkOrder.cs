@@ -8,4 +8,7 @@ public class WorkOrder
     public string Status { get; set; } = "queued";
     public string Priority { get; set; } = "normal";
     public DateTime ScheduledFor { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public Fault Fault { get; set; } = null!;
 }

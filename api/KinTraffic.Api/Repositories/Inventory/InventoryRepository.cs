@@ -1,21 +1,14 @@
 using KinTraffic.Api.Models;
+using KinTraffic.Api.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace KinTraffic.Api.Repositories.Inventory;
 
-public class InventoryRepository
+public class InventoryRepository(KinTrafficDbContext dbContext)
 {
-    private readonly List<InventoryItem> _inventory =
-    [
-        new InventoryItem
-        {
-            Id = "inv-100",
-            Sku = "SP-LED-12",
-            Name = "Signal LED Module",
-            QuantityOnHand = 18,
-            Location = "Warehouse A",
-            ReorderLevel = 8
-        }
-    ];
-
-    public IEnumerable<InventoryItem> GetInventory() => _inventory;
+    public async Task<IReadOnlyList<InventoryItem>> GetInventoryAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.InventoryItems
+            .AsNoTracking()
+            .OrderBy(item => item.Name)
+            .ToListAsync(cancellationToken);
 }

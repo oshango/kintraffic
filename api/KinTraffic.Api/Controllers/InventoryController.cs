@@ -16,5 +16,6 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<InventoryItemDto>> GetInventory() => Ok(_service.GetInventory());
+    public async Task<ActionResult<IEnumerable<InventoryItemDto>>> GetInventory(CancellationToken cancellationToken) =>
+        Ok(await _service.GetInventoryAsync(cancellationToken));
 }

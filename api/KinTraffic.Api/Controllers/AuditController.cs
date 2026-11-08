@@ -16,5 +16,6 @@ public class AuditController : ControllerBase
     }
 
     [HttpGet("logs")]
-    public ActionResult<IEnumerable<AuditLogDto>> GetLogs() => Ok(_service.GetLogs());
+    public async Task<ActionResult<IEnumerable<AuditLogDto>>> GetLogs(CancellationToken cancellationToken) =>
+        Ok(await _service.GetLogsAsync(cancellationToken));
 }

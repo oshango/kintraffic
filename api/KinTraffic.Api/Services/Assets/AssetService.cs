@@ -12,13 +12,13 @@ public class AssetService
         _repository = repository;
     }
 
-    public IEnumerable<AssetDto> GetAssets() =>
-        _repository.GetAssets().Select(asset => new AssetDto
+    public async Task<IReadOnlyList<AssetDto>> GetAssetsAsync(CancellationToken cancellationToken = default) =>
+        (await _repository.GetAssetsAsync(cancellationToken)).Select(device => new AssetDto
         {
-            Id = asset.Id,
-            JunctionId = asset.JunctionId,
-            Name = asset.Name,
-            Type = asset.Type,
-            Status = asset.Status
-        });
+            Id = device.Id,
+            JunctionId = device.JunctionId,
+            Name = device.Name,
+            Type = device.Type,
+            Status = device.Status
+        }).ToList();
 }

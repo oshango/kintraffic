@@ -1,22 +1,15 @@
 using KinTraffic.Api.Models;
+using KinTraffic.Api.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace KinTraffic.Api.Repositories.Faults;
 
-public class FaultRepository
+public class FaultRepository(KinTrafficDbContext dbContext)
 {
-    private readonly List<Fault> _faults =
-    [
-        new Fault
-        {
-            Id = "fault-1001",
-            JunctionId = "junction-01",
-            AssetId = "asset-11",
-            Severity = "high",
-            Status = "open",
-            Description = "Signal controller overheating",
-            CreatedAt = new DateTime(2026, 8, 30, 8, 10, 0, DateTimeKind.Utc)
-        }
-    ];
-
-    public IEnumerable<Fault> GetFaults() => _faults;
+    public async Task<IReadOnlyList<Fault>> GetFaultsAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.Faults
+            .AsNoTracking()
+            .Include(fault => fault.Device)
+            .OrderByDescending(fault => fault.CreatedAt)
+            .ToListAsync(cancellationToken);
 }

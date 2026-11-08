@@ -13,5 +13,6 @@ public class TrafficStatesController : ControllerBase
     public TrafficStatesController(TrafficStateService service) => _service = service;
 
     [HttpGet]
-    public ActionResult<IEnumerable<TrafficStateDto>> GetTrafficStates() => Ok(_service.GetTrafficStates());
+    public async Task<ActionResult<IEnumerable<TrafficStateDto>>> GetTrafficStates(CancellationToken cancellationToken) =>
+        Ok(await _service.GetTrafficStatesAsync(cancellationToken));
 }
