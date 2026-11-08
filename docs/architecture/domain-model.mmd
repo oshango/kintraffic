@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph Operations
+    Junction -->|1:N; SQL FK nullable; target Device required| Device
+    Device -->|1:N; SQL FK nullable; API uses AssetId| Fault
+    Fault -->|1:N; SQL FK nullable| WorkOrder
+    Device -->|1:N; SQL FK nullable| Telemetry
+    RoadSegment -->|1:N; SQL FK required| TrafficState
+    TrafficSignal
+  end
+
+  subgraph Identity
+    User
+    Role
+  end
+
+  subgraph Commercial
+    Contract
+    Invoice
+  end
+
+  subgraph Inventory
+    InventoryItem
+  end
+
+  WorkOrder -.->|optional TechnicianId; no FK| User
+  User -.->|proposed membership; source is string array| Role
+  Invoice -.->|ContractId in API; no SQL FK| Contract
