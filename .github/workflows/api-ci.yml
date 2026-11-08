@@ -46,6 +46,8 @@ jobs:
       id-token: write
 
     steps:
+    - uses: actions/checkout@v4
+
     - name: Validate Azure OIDC configuration
       env:
         AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}

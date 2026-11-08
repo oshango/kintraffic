@@ -65,8 +65,8 @@ $federatedCredential = @'
 {
   "name": "github-main-production",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:oshango/kintraffic:ref:refs/heads/main",
-  "description": "KinTraffic production API deployment from main",
+  "subject": "repo:oshango/kintraffic:environment:production",
+  "description": "KinTraffic production API deployment through the protected production environment",
   "audiences": ["api://AzureADTokenExchange"]
 }
 '@
@@ -74,14 +74,14 @@ $federatedCredential = @'
 az ad app federated-credential create --id $apiAppObjectId --parameters $federatedCredential | Out-Null
 ```
 
-After the API Web App exists, grant only the Web App scope:
+After the Container App exists, grant only the Container App scope:
 
 ```powershell
-$apiResourceId = az webapp show --resource-group kintraffic-rg --name kintraffic-api --query id --output tsv
+$apiResourceId = az containerapp show --resource-group kintraffic-rg --name kintraffic-api --query id --output tsv
 az role assignment create `
   --assignee-object-id $apiPrincipalObjectId `
   --assignee-principal-type ServicePrincipal `
-  --role "Website Contributor" `
+  --role "Container Apps Contributor" `
   --scope $apiResourceId
 ```
 
