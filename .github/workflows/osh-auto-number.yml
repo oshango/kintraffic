@@ -13,37 +13,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get existing OSH issues
+      - name: Allocate collision-checked OSH identifier
         id: get_osh
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issues = await github.rest.issues.listForRepo({
+            const issue = context.payload.issue;
+            const oshNumber = String(issue.number);
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "all",
               per_page: 100
             });
 
-            const oshNumbers = issues.data
-              .filter(i => /^OSH-\d+/.test(i.title))
-              .map(i => parseInt(i.title.match(/^OSH-(\d+)/)[1]));
+            const prefix = new RegExp(`^OSH-${oshNumber}(?:\\s|$|[-—])`, "i");
+            const conflict = issues.find(existing => existing.number !== issue.number && prefix.test(existing.title));
+            if (conflict) {
+              core.setFailed(`Cannot assign OSH-${oshNumber}: it is already used by issue #${conflict.number}. Resolve the identifier conflict manually.`);
+              return;
+            }
 
-            const next = oshNumbers.length > 0 ? Math.max(...oshNumbers) + 1 : 1;
-
-            core.setOutput("next", next);
+            core.setOutput("osh_number", oshNumber);
 
       - name: Rename issue with OSH number
         uses: actions/github-script@v7
         env:
-          NEXT: ${{ steps.get_osh.outputs.next }}
+          OSH_NUMBER: ${{ steps.get_osh.outputs.osh_number }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const next = process.env.NEXT;
+            const oshNumber = process.env.OSH_NUMBER;
             const oldTitle = context.payload.issue.title;
-            const newTitle = `OSH-${next} — ${oldTitle}`;
+            const newTitle = `OSH-${oshNumber} — ${oldTitle}`;
 
             await github.rest.issues.update({
               owner: context.repo.owner,
