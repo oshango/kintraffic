@@ -36,6 +36,10 @@ The API workflow reads the first three secrets through Azure OIDC. The UI workfl
 
 The workflow uses the non-secret registry name defined in Terraform: `kintrafficacr`.
 
+### Pause and resume Azure deployments
+
+Production build and test jobs run on pushes and pull requests as usual. The API and UI deployment jobs run only when the repository Actions variable `ENABLE_PRODUCTION_DEPLOYMENT` is exactly `true`. Leave this variable unset or set it to `false` to pause Azure deployments while keeping CI validation active. Set it to `true` only after budget approval and production secrets/federated credentials are verified. Configure this as a repository-level Actions variable, not a secret or environment-scoped variable, because the deploy job condition is evaluated before the `production` environment is entered.
+
 ## 2. Select the Azure Subscription
 
 Run these commands locally from an elevated development account with permission to create resource groups, applications, role assignments, and storage resources. Do not put the values into source control.
@@ -65,8 +69,8 @@ $federatedCredential = @'
 {
   "name": "github-main-production",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:oshango/kintraffic:ref:refs/heads/main",
-  "description": "KinTraffic production API deployment from main",
+  "subject": "repo:oshango/kintraffic:environment:production",
+  "description": "KinTraffic production API deployment through the protected production environment",
   "audiences": ["api://AzureADTokenExchange"]
 }
 '@
@@ -74,14 +78,14 @@ $federatedCredential = @'
 az ad app federated-credential create --id $apiAppObjectId --parameters $federatedCredential | Out-Null
 ```
 
-After the API Web App exists, grant only the Web App scope:
+After the Container App exists, grant only the Container App scope:
 
 ```powershell
-$apiResourceId = az webapp show --resource-group kintraffic-rg --name kintraffic-api --query id --output tsv
+$apiResourceId = az containerapp show --resource-group kintraffic-rg --name kintraffic-api --query id --output tsv
 az role assignment create `
   --assignee-object-id $apiPrincipalObjectId `
   --assignee-principal-type ServicePrincipal `
-  --role "Website Contributor" `
+  --role "Container Apps Contributor" `
   --scope $apiResourceId
 ```
 

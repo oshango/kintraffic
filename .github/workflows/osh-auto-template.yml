@@ -12,75 +12,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get issue info
-        id: info
+      - name: Preserve issue content and add defaults
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const title = context.payload.issue.title;
-            core.setOutput("title", title);
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = issue.number;
+            const title = issue.title.replace(/^OSH-\d+\s*—\s*/, "");
 
-      - name: Generate template body
-        id: template
-        uses: actions/github-script@v7
-        env:
-          TITLE: ${{ steps.info.outputs.title }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const title = process.env.TITLE;
+            if (!issue.body?.trim()) {
+              const oshNumber = issue.number;
+              const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+              const body = [
+                "## Description",
+                title,
+                "",
+                "## Acceptance Criteria",
+                "- [ ] Implementation completed",
+                "- [ ] Tests added or updated",
+                "- [ ] Pull request reviewed and merged",
+                "- [ ] CI checks pass",
+                "",
+                "## Branch Name",
+                `feature/OSH-${oshNumber}-${slug}`,
+                "",
+                "## PR Title Format",
+                `feat: OSH-${oshNumber}: ${title}`,
+                "",
+                "## Linked OSH",
+                `OSH-${oshNumber}`
+              ].join("\n");
 
-            // Extract OSH number if present
-            const match = title.match(/^OSH-(\d+)/);
-            const oshNumber = match ? match[1] : "X";
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, body });
+            }
 
-            const branch = `feature/OSH-${oshNumber}-${title.replace(/^OSH-\d+\s*—\s*/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-
-            const prTitle = `feat: OSH-${oshNumber}: ${title.replace(/^OSH-\d+\s*—\s*/, "")}`;
-
-            const body = "\n" +
-              "## Description\n" +
-              title.replace(/^OSH-\d+\s*—\s*/, "") + "\n\n" +
-              "## Acceptance Criteria\n" +
-              "- [ ] Code implemented\n" +
-              "- [ ] Tests added\n" +
-              "- [ ] PR created\n" +
-              "- [ ] PR follows naming convention\n" +
-              "- [ ] CI/CD passes\n\n" +
-              "## Branch Name\n" +
-              "`" + branch + "`\n\n" +
-              "## PR Title Format\n" +
-              "`" + prTitle + "`\n\n" +
-              "## Linked OSH\n" +
-              "OSH-" + oshNumber + "\n";
-
-            core.setOutput("body", body);
-
-      - name: Update issue body
-        uses: actions/github-script@v7
-        env:
-          BODY: ${{ steps.template.outputs.body }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const body = process.env.BODY;
-
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              body: body
-            });
-
-      - name: Add labels
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              labels: ["OSH", "todo"]
-            });
+            const existingLabels = new Set((issue.labels || []).map(label => typeof label === "string" ? label : label.name));
+            const missingLabels = ["OSH", "todo"].filter(label => !existingLabels.has(label));
+            if (missingLabels.length > 0) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: missingLabels });
+            }
