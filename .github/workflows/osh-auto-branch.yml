@@ -50,17 +50,10 @@ jobs:
             const branch = process.env.BRANCH;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const repository = await github.rest.repos.get({
-              owner,
-              repo
-            });
-
-            const defaultBranch = repository.data.default_branch;
-
             const ref = await github.rest.git.getRef({
               owner,
               repo,
-              ref: `heads/${defaultBranch}`
+              ref: "heads/develop"
             });
 
             let branchExists = false;
