@@ -6,6 +6,7 @@ namespace KinTraffic.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/assets")]
 public class AssetController : ControllerBase
 {
     private readonly AssetService _service;

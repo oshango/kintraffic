@@ -1,6 +1,17 @@
 @KinTraffic.Api_HostAddress = http://localhost:5107
 
-GET {{KinTraffic.Api_HostAddress}}/weatherforecast/
+### Legacy asset route
+GET {{KinTraffic.Api_HostAddress}}/api/Asset
 Accept: application/json
 
-###
+### Compatible plural asset route
+GET {{KinTraffic.Api_HostAddress}}/api/assets
+Accept: application/json
+
+### Legacy fault route
+GET {{KinTraffic.Api_HostAddress}}/api/Fault
+Accept: application/json
+
+### Compatible plural fault route
+GET {{KinTraffic.Api_HostAddress}}/api/faults
+Accept: application/json

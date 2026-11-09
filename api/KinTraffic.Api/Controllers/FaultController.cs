@@ -6,6 +6,7 @@ namespace KinTraffic.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/faults")]
 public class FaultController : ControllerBase
 {
     private readonly FaultService _service;
