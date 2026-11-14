@@ -1,12 +1,68 @@
 using KinTraffic.Api.Models;
+using KinTraffic.Api.Persistence;
 using KinTraffic.Api.Tests.TestHelpers;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace KinTraffic.Api.Tests.Unit.Persistence;
 
 public class KinTrafficPersistenceTests
 {
+    [Fact]
+    public async Task IdentityAccount_PersistsHashedPasswordAcrossContexts()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var password = $"Test-{Guid.NewGuid():N}aA1!";
+
+        await using (var writeContext = database.CreateContext())
+        {
+            using var services = CreateIdentityServices(writeContext);
+            var userManager = services.GetRequiredService<UserManager<KinTrafficIdentityAccount>>();
+            var account = new KinTrafficIdentityAccount { UserName = "operator@example.invalid" };
+
+            var result = await userManager.CreateAsync(account, password);
+
+            Assert.True(result.Succeeded, string.Join(", ", result.Errors.Select(error => error.Description)));
+            Assert.NotNull(account.PasswordHash);
+            Assert.DoesNotContain(password, account.PasswordHash);
+        }
+
+        await using var readContext = database.CreateContext();
+        using var readServices = CreateIdentityServices(readContext);
+        var readManager = readServices.GetRequiredService<UserManager<KinTrafficIdentityAccount>>();
+        var persisted = await readManager.FindByNameAsync("operator@example.invalid");
+
+        Assert.NotNull(persisted);
+        Assert.True(await readManager.CheckPasswordAsync(persisted, password));
+        Assert.False(await readManager.CheckPasswordAsync(persisted, "incorrect-password"));
+        Assert.Null(readContext.Model.FindEntityType(typeof(UserProfile)));
+    }
+
+    [Fact]
+    public async Task IdentityAccounts_AreNotSeeded()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var context = database.CreateContext();
+
+        Assert.Empty(await context.Users.ToListAsync());
+    }
+
+    [Fact]
+    public async Task IdentityCompositeKeyProperties_UseSqlServerSafeLengths()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var context = database.CreateContext();
+        var login = context.Model.FindEntityType(typeof(IdentityUserLogin<string>))!;
+        var token = context.Model.FindEntityType(typeof(IdentityUserToken<string>))!;
+
+        Assert.Equal(128, login.FindProperty(nameof(IdentityUserLogin<string>.LoginProvider))!.GetMaxLength());
+        Assert.Equal(128, login.FindProperty(nameof(IdentityUserLogin<string>.ProviderKey))!.GetMaxLength());
+        Assert.Equal(128, token.FindProperty(nameof(IdentityUserToken<string>.LoginProvider))!.GetMaxLength());
+        Assert.Equal(128, token.FindProperty(nameof(IdentityUserToken<string>.Name))!.GetMaxLength());
+    }
+
     [Fact]
     public async Task OperationalGraph_PersistsAcrossDbContextInstances()
     {
@@ -86,5 +142,15 @@ public class KinTrafficPersistenceTests
         });
 
         await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+    }
+
+    private static ServiceProvider CreateIdentityServices(KinTrafficDbContext context)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(context);
+        services.AddIdentityCore<KinTrafficIdentityAccount>()
+            .AddEntityFrameworkStores<KinTrafficDbContext>();
+        return services.BuildServiceProvider();
     }
 }

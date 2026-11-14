@@ -1,12 +1,12 @@
 # ADR-002: KinTraffic-Managed Application Identity
 
-- **Status:** Proposed; account lifecycle decisions require approval
+- **Status:** Protocol and browser refresh-token transport approved in principle; implementation and remaining decisions require approval
 - **Date:** 2026-11-09
 - **Issues:** [OSH-65](https://github.com/oshango/kintraffic/issues/65), [OSH-66](https://github.com/oshango/kintraffic/issues/66), [OSH-67](https://github.com/oshango/kintraffic/issues/67)
 
 ## Context
 
-KinTraffic needs authenticated operator access, but its current repository contains only a demo login response and a client-side placeholder guard. OSH-65 currently makes Microsoft Entra ID mandatory, while the product direction is for KinTraffic to own application accounts. The existing OSH-62 domain baseline separates business User/Role concepts from credentials and authorization policy.
+KinTraffic needs authenticated operator access, but its current repository contains only a demo login response and a client-side placeholder guard. OSH-65 previously made Microsoft Entra ID mandatory; its current wording recommends KinTraffic-managed identities instead. The existing OSH-62 domain baseline separates business User/Role concepts from credentials and authorization policy.
 
 ### Confirmed repository facts
 
@@ -21,9 +21,13 @@ KinTraffic needs authenticated operator access, but its current repository conta
 
 **Recommended direction:** KinTraffic owns its application-user lifecycle. Microsoft Entra ID is not a mandatory runtime dependency; federation may be considered later as an explicit enterprise option.
 
-Use the first-party ASP.NET Core Identity framework for credential verification, password hashing, account lockout, and persisted user/role records rather than implementing a bespoke password store. Keep the existing business `UserProfile` concept separate from credential records and define an explicit stable mapping between them. The exact entity mapping and role lifecycle require review before implementation.
+Use the first-party ASP.NET Core Identity framework for credential verification, password hashing, account lockout, and persisted identity records rather than implementing a bespoke password store. `AddIdentityCore`, rather than `AddIdentity`, is the proposed registration; its configuration and persistence mapping require approval. Keep the existing business `UserProfile` concept separate from credential records and define an explicit stable mapping between them. The exact entity mapping and role lifecycle require review before implementation.
 
-The API will authenticate credentials, issue short-lived signed access tokens, and validate issuer, audience, signature, and lifetime. Angular will hold access tokens in memory, never in `localStorage` or `sessionStorage`. Refresh tokens will be high-entropy, stored server-side only as hashes, rotated on use, revocable, and checked for reuse. Refresh tokens will be delivered only in `Secure`, `HttpOnly` cookies. Cookie `SameSite`, CSRF-token handling, and accepted origins must be chosen against the actual deployment topology; credentialed CORS must use explicit origins and never `*`.
+The approved protocol direction is OAuth 2.0 / OpenID Connect authorization code flow with PKCE, with JWT bearer access to the API. OpenIddict hosted in the ASP.NET Core modular monolith is the proposed issuer, subject to security review and dependency approval. Do not issue access tokens directly from a username/password grant. ASP.NET Core Identity handles credentials; it is not itself an OAuth/OIDC authorization server.
+
+Angular will hold access tokens in memory, never in `localStorage` or `sessionStorage`. The selected browser transport is the actual refresh token in a `Secure`, `HttpOnly` cookie, not an opaque BFF session handle standing in for a server-held refresh token. A reviewed first-party bridge must keep the refresh token out of JavaScript and response bodies while safely coordinating with the issuer. Refresh tokens must be high-entropy, stored server-side only as hashes, rotated atomically, revocable, and checked for reuse; replay revokes the affected token family, and concurrent requests cannot redeem the same token twice. Cookie `SameSite`, domain, lifetime, CSRF-token handling, and accepted origins must be chosen against the actual deployment topology; credentialed CORS must use explicit origins and never `*`.
+
+**Implementation gate:** OpenIddict integration with this cookie bridge, hashed refresh-token persistence, atomic rotation, and family-wide replay revocation has not been demonstrated. Its reference-token storage may retain protected token payloads rather than only hashes. Verify the selected issuer and storage implementation against every requirement before approval; do not assume default OpenIddict behavior satisfies them. If it cannot, return the incompatibility for a new decision rather than weaken the requirements. No token protocol or authentication implementation is authorized by this decision alone.
 
 Authorization is enforced by ASP.NET Core policies, not by Angular route guards or client-supplied role fields. Protected API access is deny-by-default; only explicitly approved endpoints are anonymous. Angular route guards complement this policy, and the API remains authoritative for every operation.
 
