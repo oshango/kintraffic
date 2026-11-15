@@ -1,9 +1,12 @@
 using KinTraffic.Api.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace KinTraffic.Api.Persistence;
 
-public class KinTrafficDbContext(DbContextOptions<KinTrafficDbContext> options) : DbContext(options)
+public class KinTrafficDbContext(DbContextOptions<KinTrafficDbContext> options) : IdentityUserContext<KinTrafficIdentityAccount>(options)
 {
     public DbSet<Junction> Junctions => Set<Junction>();
     public DbSet<Device> Devices => Set<Device>();
@@ -17,9 +20,60 @@ public class KinTrafficDbContext(DbContextOptions<KinTrafficDbContext> options) 
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<RefreshTokenFamily> RefreshTokenFamilies => Set<RefreshTokenFamily>();
+    public DbSet<RefreshTokenRecord> RefreshTokens => Set<RefreshTokenRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<IdentityUserLogin<string>>(entity =>
+        {
+            entity.Property(login => login.LoginProvider).HasMaxLength(128);
+            entity.Property(login => login.ProviderKey).HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<IdentityUserToken<string>>(entity =>
+        {
+            entity.Property(token => token.LoginProvider).HasMaxLength(128);
+            entity.Property(token => token.Name).HasMaxLength(128);
+            entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name }).IsClustered(false);
+        });
+
+        var refreshFamilies = modelBuilder.Entity<RefreshTokenFamily>();
+        refreshFamilies.ToTable("RefreshTokenFamilies");
+        refreshFamilies.HasKey(family => family.Id);
+        refreshFamilies.Property(family => family.AccountId).HasMaxLength(450).IsRequired();
+        refreshFamilies.Property(family => family.SecurityStampHash).HasMaxLength(32).IsRequired();
+        refreshFamilies.Property(family => family.ConcurrencyToken).IsConcurrencyToken();
+        refreshFamilies.HasIndex(family => family.AccountId);
+        refreshFamilies.HasOne<KinTrafficIdentityAccount>()
+            .WithMany()
+            .HasForeignKey(family => family.AccountId)
+            .OnDelete(DeleteBehavior.Cascade);
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            refreshFamilies.Property(family => family.AbsoluteExpiresAt)
+                .HasConversion(new DateTimeOffsetToBinaryConverter());
+        }
+
+        var refreshTokens = modelBuilder.Entity<RefreshTokenRecord>();
+        refreshTokens.ToTable("RefreshTokens");
+        refreshTokens.HasKey(token => token.Id);
+        refreshTokens.Property(token => token.TokenHash).HasMaxLength(32).IsRequired();
+        refreshTokens.Property(token => token.ConcurrencyToken).IsConcurrencyToken();
+        refreshTokens.HasIndex(token => token.TokenHash).IsUnique();
+        refreshTokens.HasIndex(token => token.FamilyId);
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            refreshTokens.Property(token => token.ExpiresAt)
+                .HasConversion(new DateTimeOffsetToBinaryConverter());
+        }
+        refreshTokens.HasOne(token => token.Family)
+            .WithMany(family => family.Tokens)
+            .HasForeignKey(token => token.FamilyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         var utcTimestampDefault = Database.IsSqlServer() ? "SYSUTCDATETIME()" : "CURRENT_TIMESTAMP";
 
         var junctions = modelBuilder.Entity<Junction>();

@@ -12,27 +12,47 @@ using KinTraffic.Api.Services.Billing;
 using KinTraffic.Api.Services.Contracts;
 using KinTraffic.Api.Services.Faults;
 using KinTraffic.Api.Services.Inventory;
+using KinTraffic.Api.Services.Security;
 using KinTraffic.Api.Services.Traffic;
 using KinTraffic.Api.Services.WorkOrders;
 using KinTraffic.Api.Persistence;
+using KinTraffic.Api.OpenApi;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+if (DevelopmentAccountProvisioning.IsRequested(args))
+{
+	Environment.ExitCode = await DevelopmentAccountProvisioning.RunAsync(builder.Configuration, builder.Environment, args);
+	return;
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
-builder.Services.AddCors(options =>
+builder.Services.AddKinTrafficOpenApi();
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<IValidateOptions<AuthenticationOptions>, AuthenticationOptionsValidator>();
+builder.Services.AddOptions<AuthenticationOptions>()
+	.Bind(builder.Configuration.GetSection(AuthenticationOptions.SectionName))
+	.ValidateOnStart();
+var configuredAuthentication = builder.Configuration
+	.GetSection(AuthenticationOptions.SectionName)
+	.Get<AuthenticationOptions>() ?? new AuthenticationOptions();
+builder.Services.AddSingleton(configuredAuthentication);
+
+if (configuredAuthentication.AllowedOrigins is { Length: > 0 } origins)
 {
-	options.AddPolicy("Frontend", policy =>
-	{
-		policy.WithOrigins(allowedOrigins)
+	builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
+		policy.WithOrigins(origins)
 			.AllowAnyHeader()
-			.AllowAnyMethod();
-	});
-});
+			.AllowAnyMethod()
+			.WithExposedHeaders("Authorization")
+			.AllowCredentials()));
+}
 
 var databaseConnectionString = builder.Configuration.GetConnectionString("KinTraffic");
 if (string.IsNullOrWhiteSpace(databaseConnectionString))
@@ -42,6 +62,31 @@ if (string.IsNullOrWhiteSpace(databaseConnectionString))
 
 builder.Services.AddDbContext<KinTrafficDbContext>(options =>
 	options.UseSqlServer(databaseConnectionString));
+var useTrustedForwardedHeaders = builder.Services.AddAuthenticationRateLimiting(configuredAuthentication);
+builder.Services.AddIdentityCore<KinTrafficIdentityAccount>(options =>
+{
+	options.Lockout.AllowedForNewUsers = true;
+	options.Lockout.MaxFailedAccessAttempts = configuredAuthentication.MaxFailedAccessAttempts ?? 0;
+	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(configuredAuthentication.LockoutDurationMinutes ?? 0);
+})
+	.AddSignInManager()
+	.AddEntityFrameworkStores<KinTrafficDbContext>()
+	.AddKinTrafficPasswordPolicy(configuredAuthentication);
+builder.Services.AddScoped<CredentialVerificationService>();
+builder.Services.AddSingleton<SigningKeyRing>();
+builder.Services.AddSingleton<AccessTokenService>();
+builder.Services.AddScoped<RefreshTokenService>();
+builder.Services.AddScoped<AuthenticationService>();
+builder.Services.AddSingleton<AccountAttemptLimiter>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+	.AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+	.Configure<AccessTokenService>((options, tokenService) =>
+	{
+		options.MapInboundClaims = false;
+		options.IncludeErrorDetails = false;
+		options.TokenValidationParameters = tokenService.CreateValidationParameters();
+	});
 builder.Services.AddScoped<ITrafficRepository, SqlTrafficRepository>();
 builder.Services.AddScoped<TrafficService>();
 builder.Services.AddScoped<RoadSegmentRepository>();
@@ -71,6 +116,12 @@ builder.Services.AddScoped<AuditRepository>();
 builder.Services.AddScoped<AuditService>();
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<IOptions<AuthenticationOptions>>().Value;
+
+if (useTrustedForwardedHeaders)
+{
+	app.UseForwardedHeaders();
+}
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
@@ -78,8 +129,15 @@ await using (var scope = app.Services.CreateAsyncScope())
 	await dbContext.Database.MigrateAsync();
 }
 
-app.MapOpenApi();
-app.UseCors("Frontend");
+app.MapOpenApiInDevelopment();
+app.UseRouting();
+if (configuredAuthentication.AllowedOrigins is { Length: > 0 })
+{
+	app.UseCors("Frontend");
+}
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();

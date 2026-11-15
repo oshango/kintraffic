@@ -1,5 +1,6 @@
 using KinTraffic.Api.DTOs.Traffic;
 using KinTraffic.Api.Services.Traffic;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KinTraffic.Api.Controllers;
@@ -15,6 +16,7 @@ public class TrafficController : ControllerBase
         _service = service;
     }
 
+    [Authorize]
     [HttpGet("signals")]
     public async Task<ActionResult<IEnumerable<TrafficSignalDto>>> GetSignals() =>
         Ok(await _service.GetSignalsAsync());
