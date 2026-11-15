@@ -45,8 +45,30 @@ public class AccountAttemptLimiterTests
         var limiter = new AccountAttemptLimiter(clock, options);
 
         Assert.True(limiter.TryAcquire(IPAddress.Parse("192.0.2.10"), "FIRST"));
-        clock.Advance(TimeSpan.FromMinutes(6));
+        clock.Advance(TimeSpan.FromMinutes(31));
 
         Assert.True(limiter.TryAcquire(IPAddress.Parse("192.0.2.11"), "SECOND"));
+    }
+
+    [Fact]
+    public void TryAcquire_DoesNotEvictCounterBeforeWindowExpires()
+    {
+        var options = AuthenticationTestServices.CreateOptions();
+        options.AccountPermitLimit = 1;
+        options.AccountWindowSeconds = 60 * 60;
+        options.AccountThrottleIdleMinutes = 30;
+        options.MaxAccountThrottlePartitions = 1;
+        var clock = new MutableTimeProvider(DateTimeOffset.Parse("2026-11-15T12:00:00Z"));
+        var limiter = new AccountAttemptLimiter(clock, options);
+        var clientIp = IPAddress.Parse("192.0.2.12");
+
+        Assert.True(limiter.TryAcquire(clientIp, "OPERATOR"));
+        clock.Advance(TimeSpan.FromMinutes(31));
+
+        Assert.False(limiter.TryAcquire(clientIp, "OPERATOR"));
+
+        clock.Advance(TimeSpan.FromMinutes(30));
+
+        Assert.True(limiter.TryAcquire(clientIp, "OPERATOR"));
     }
 }

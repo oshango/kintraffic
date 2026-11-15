@@ -14,6 +14,15 @@ namespace KinTraffic.Api.Tests.Unit.Security;
 public class AuthenticationOptionsTests
 {
     [Fact]
+    public void InstalledIdentityHasher_DefaultsToV3With100000Iterations()
+    {
+        var defaults = new Microsoft.AspNetCore.Identity.PasswordHasherOptions();
+
+        Assert.Equal(Microsoft.AspNetCore.Identity.PasswordHasherCompatibilityMode.IdentityV3, defaults.CompatibilityMode);
+        Assert.Equal(100000, defaults.IterationCount);
+    }
+
+    [Fact]
     public async Task ProductionStartup_RejectsMissingAuthenticationConfiguration()
     {
         await AssertStartupFails(new Dictionary<string, string?>());
@@ -25,6 +34,66 @@ public class AuthenticationOptionsTests
         var values = CreateValidConfiguration();
         values.Remove("Authentication:MaxFailedAccessAttempts");
         values.Remove("Authentication:LockoutDurationMinutes");
+
+        await AssertStartupFails(values);
+    }
+
+    [Theory]
+    [InlineData("Authentication:MaxFailedAccessAttempts", "9")]
+    [InlineData("Authentication:LockoutDurationMinutes", "6")]
+    public async Task ProductionStartup_RejectsDifferentLockoutConfiguration(string key, string value)
+    {
+        var values = CreateValidConfiguration();
+        values[key] = value;
+
+        await AssertStartupFails(values);
+    }
+
+    [Fact]
+    public void Validator_Accepts3072BitSigningKeyAndHostCookieWithRootPath()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+        var options = AuthenticationTestServices.CreateOptions();
+        using var rsa = System.Security.Cryptography.RSA.Create(3072);
+        options.SigningPrivateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
+        options.RefreshCookieName = "__Host-kt-refresh";
+        options.RefreshCookieSameSite = "Strict";
+        options.RefreshCookiePath = "/";
+        var validator = new AuthenticationOptionsValidator(builder.Environment);
+
+        Assert.True(validator.Validate(null, options).Succeeded);
+        using var keyRing = new SigningKeyRing(options);
+        var tokenService = new AccessTokenService(options, keyRing, TimeProvider.System);
+        var issuedToken = tokenService.Issue("test-account");
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        Assert.NotNull(handler.ValidateToken(issuedToken.Value, tokenService.CreateValidationParameters(), out _));
+        options.RefreshCookiePath = "/api/auth";
+        Assert.True(validator.Validate(null, options).Failed);
+    }
+
+    [Theory]
+    [InlineData("Authentication:PasswordMinimumLength", "14")]
+    [InlineData("Authentication:PasswordMaximumLength", "127")]
+    [InlineData("Authentication:PasswordMaximumLength", "129")]
+    [InlineData("Authentication:PasswordHasherIterationCount", "219999")]
+    public async Task ProductionStartup_RejectsWeakPasswordConfiguration(string key, string value)
+    {
+        var values = CreateValidConfiguration();
+        values[key] = value;
+
+        await AssertStartupFails(values);
+    }
+
+    [Fact]
+    public async Task ProductionStartup_RejectsMissingPasswordConfiguration()
+    {
+        var values = CreateValidConfiguration();
+        values.Remove("Authentication:PasswordMinimumLength");
+        values.Remove("Authentication:PasswordMaximumLength");
+        values.Remove("Authentication:PasswordHasherIterationCount");
 
         await AssertStartupFails(values);
     }
@@ -43,6 +112,57 @@ public class AuthenticationOptionsTests
     {
         var values = CreateValidConfiguration();
         values["Authentication:AllowedOrigins:0"] = "http://ui.test";
+
+        await AssertStartupFails(values);
+    }
+
+    [Fact]
+    public async Task ProductionStartup_RejectsMultipleAllowedOrigins()
+    {
+        var values = CreateValidConfiguration();
+        values["Authentication:AllowedOrigins:1"] = "https://second-ui.test";
+
+        await AssertStartupFails(values);
+    }
+
+    [Fact]
+    public async Task ProductionStartup_Rejects2048BitSigningKey()
+    {
+        var values = CreateValidConfiguration();
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        values["Authentication:SigningPrivateKeyPem"] = rsa.ExportPkcs8PrivateKeyPem();
+
+        await AssertStartupFails(values);
+    }
+
+    [Fact]
+    public async Task ProductionStartup_Rejects2048BitPreviousSigningKey()
+    {
+        var values = CreateValidConfiguration();
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        values["Authentication:PreviousSigningKeys:0:KeyId"] = "previous-key";
+        values["Authentication:PreviousSigningKeys:0:PublicKeyPem"] = rsa.ExportSubjectPublicKeyInfoPem();
+
+        await AssertStartupFails(values);
+    }
+
+    [Theory]
+    [InlineData("Authentication:MaxAccountThrottlePartitions", "9999")]
+    [InlineData("Authentication:MaxAccountThrottlePartitions", "10001")]
+    [InlineData("Authentication:AccountThrottleIdleMinutes", "29")]
+    public async Task ProductionStartup_RejectsNonstandardThrottleCapacityOrIdleRetention(string key, string value)
+    {
+        var values = CreateValidConfiguration();
+        values[key] = value;
+
+        await AssertStartupFails(values);
+    }
+
+    [Fact]
+    public async Task ProductionStartup_RejectsThrottleIdleRetentionShorterThanAccountWindow()
+    {
+        var values = CreateValidConfiguration();
+        values["Authentication:AccountWindowSeconds"] = "1801";
 
         await AssertStartupFails(values);
     }
@@ -81,6 +201,8 @@ public class AuthenticationOptionsTests
     private static Dictionary<string, string?> CreateValidConfiguration()
     {
         var options = AuthenticationTestServices.CreateOptions();
+        using var rsa = System.Security.Cryptography.RSA.Create(3072);
+        options.SigningPrivateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
         return new Dictionary<string, string?>
         {
             ["Authentication:Issuer"] = options.Issuer,
@@ -103,7 +225,10 @@ public class AuthenticationOptionsTests
             ["Authentication:MaxAccountThrottlePartitions"] = options.MaxAccountThrottlePartitions.ToString(),
             ["Authentication:AccountThrottleIdleMinutes"] = options.AccountThrottleIdleMinutes.ToString(),
             ["Authentication:MaxFailedAccessAttempts"] = options.MaxFailedAccessAttempts.ToString(),
-            ["Authentication:LockoutDurationMinutes"] = options.LockoutDurationMinutes.ToString()
+            ["Authentication:LockoutDurationMinutes"] = options.LockoutDurationMinutes.ToString(),
+            ["Authentication:PasswordMinimumLength"] = options.PasswordMinimumLength.ToString(),
+            ["Authentication:PasswordMaximumLength"] = options.PasswordMaximumLength.ToString(),
+            ["Authentication:PasswordHasherIterationCount"] = options.PasswordHasherIterationCount.ToString()
         };
     }
 }

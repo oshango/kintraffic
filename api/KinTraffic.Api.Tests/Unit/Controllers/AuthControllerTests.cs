@@ -1,11 +1,17 @@
 using System.Net;
 using System.Text.Json;
 using KinTraffic.Api.Controllers;
+using KinTraffic.Api.OpenApi;
 using KinTraffic.Api.Persistence;
 using KinTraffic.Api.Services.Security;
 using KinTraffic.Api.Tests.TestHelpers;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -124,9 +130,12 @@ public class AuthControllerTests
     }
 
     [Theory]
-    [InlineData("https://attacker.test", "same-site")]
-    [InlineData("https://ui.test", "none")]
-    public async Task Refresh_RejectsUntrustedOriginOrFetchMetadata(string origin, string fetchSite)
+    [InlineData("same-origin", true)]
+    [InlineData("same-site", true)]
+    [InlineData("cross-site", false)]
+    [InlineData("none", false)]
+    [InlineData("", false)]
+    public async Task Refresh_OnlyAllowsSameOriginAndSameSiteFetchMetadata(string fetchSite, bool allowed)
     {
         var options = AuthenticationTestServices.CreateOptions();
         await using var database = await SqliteTestDatabase.CreateAsync();
@@ -134,12 +143,155 @@ public class AuthControllerTests
         using var services = AuthenticationTestServices.CreateIdentityServices(context, options);
         var controller = CreateController(services, options, IPAddress.Parse("192.0.2.33"));
         controller.Request.Headers["X-KinTraffic-CSRF"] = "1";
-        controller.Request.Headers.Origin = origin;
-        controller.Request.Headers["Sec-Fetch-Site"] = fetchSite;
+        controller.Request.Headers.Origin = options.AllowedOrigins![0];
+        if (fetchSite.Length > 0)
+        {
+            controller.Request.Headers["Sec-Fetch-Site"] = fetchSite;
+        }
 
         var result = await controller.Refresh(CancellationToken.None);
 
+        if (allowed)
+        {
+            Assert.IsType<UnauthorizedObjectResult>(result);
+        }
+        else
+        {
+            Assert.IsType<ForbidResult>(result);
+        }
+    }
+
+    [Theory]
+    [InlineData("same-origin", true)]
+    [InlineData("same-site", true)]
+    [InlineData("cross-site", false)]
+    [InlineData("none", false)]
+    [InlineData("", false)]
+    public async Task Logout_OnlyAllowsSameOriginAndSameSiteFetchMetadata(string fetchSite, bool allowed)
+    {
+        var options = AuthenticationTestServices.CreateOptions();
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var context = database.CreateContext();
+        using var services = AuthenticationTestServices.CreateIdentityServices(context, options);
+        var controller = CreateController(services, options, IPAddress.Parse("192.0.2.35"));
+        controller.Request.Headers["X-KinTraffic-CSRF"] = "1";
+        controller.Request.Headers.Origin = options.AllowedOrigins![0];
+        if (fetchSite.Length > 0)
+        {
+            controller.Request.Headers["Sec-Fetch-Site"] = fetchSite;
+        }
+
+        var result = await controller.Logout(CancellationToken.None);
+
+        if (allowed)
+        {
+            Assert.IsType<NoContentResult>(result);
+        }
+        else
+        {
+            Assert.IsType<ForbidResult>(result);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefreshAndLogout_RejectForeignOrigin(bool logout)
+    {
+        var options = AuthenticationTestServices.CreateOptions();
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var context = database.CreateContext();
+        using var services = AuthenticationTestServices.CreateIdentityServices(context, options);
+        var controller = CreateController(services, options, IPAddress.Parse("192.0.2.36"));
+        controller.Request.Headers["X-KinTraffic-CSRF"] = "1";
+        controller.Request.Headers.Origin = "https://attacker.test";
+        controller.Request.Headers["Sec-Fetch-Site"] = "same-site";
+
+        var result = logout
+            ? await controller.Logout(CancellationToken.None)
+            : await controller.Refresh(CancellationToken.None);
+
         Assert.IsType<ForbidResult>(result);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefreshAndLogout_RequireCustomCsrfHeader(bool logout)
+    {
+        var options = AuthenticationTestServices.CreateOptions();
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var context = database.CreateContext();
+        using var services = AuthenticationTestServices.CreateIdentityServices(context, options);
+        var controller = CreateController(services, options, IPAddress.Parse("192.0.2.37"));
+        controller.Request.Headers.Origin = options.AllowedOrigins![0];
+        controller.Request.Headers["Sec-Fetch-Site"] = "same-site";
+
+        var result = logout
+            ? await controller.Logout(CancellationToken.None)
+            : await controller.Refresh(CancellationToken.None);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Theory]
+    [InlineData("Development", true)]
+    [InlineData("Production", false)]
+    public async Task OpenApiDocument_IsDevelopmentOnlyAndDocumentsRefreshLogoutResponses(
+        string environmentName,
+        bool expectedAvailable)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = environmentName,
+            ApplicationName = typeof(AuthController).Assembly.FullName
+        });
+        builder.Logging.ClearProviders();
+        builder.WebHost.ConfigureKestrel(server => server.Listen(IPAddress.Loopback, 0));
+        builder.Services.AddControllers().AddApplicationPart(typeof(AuthController).Assembly);
+        builder.Services.AddKinTrafficOpenApi();
+
+        await using var app = builder.Build();
+        app.MapOpenApiInDevelopment();
+        app.MapControllers();
+        await app.StartAsync();
+
+        try
+        {
+            var address = app.Services.GetRequiredService<IServer>()
+                .Features.Get<IServerAddressesFeature>()!
+                .Addresses.Single();
+            using var client = new HttpClient { BaseAddress = new Uri(address) };
+            using var response = await client.GetAsync("/openapi/v1.json");
+
+            if (!expectedAvailable)
+            {
+                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+                return;
+            }
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var paths = document.RootElement.GetProperty("paths");
+            var refreshResponses = paths.GetProperty("/api/auth/refresh")
+                .GetProperty("post")
+                .GetProperty("responses");
+            var logoutResponses = paths.GetProperty("/api/auth/logout")
+                .GetProperty("post")
+                .GetProperty("responses");
+
+            Assert.Contains("200", refreshResponses.EnumerateObject().Select(response => response.Name));
+            Assert.Contains("401", refreshResponses.EnumerateObject().Select(response => response.Name));
+            Assert.Contains("403", refreshResponses.EnumerateObject().Select(response => response.Name));
+            Assert.Contains("429", refreshResponses.EnumerateObject().Select(response => response.Name));
+            Assert.Contains("204", logoutResponses.EnumerateObject().Select(response => response.Name));
+            Assert.Contains("403", logoutResponses.EnumerateObject().Select(response => response.Name));
+            Assert.Contains("429", logoutResponses.EnumerateObject().Select(response => response.Name));
+        }
+        finally
+        {
+            await app.StopAsync();
+        }
     }
 
     private static AuthController CreateController(

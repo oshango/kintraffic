@@ -33,10 +33,47 @@ public sealed class AuthenticationOptionsValidator : IValidateOptions<Authentica
         RequirePositive(options.SourceIpWindowSeconds, "Authentication:SourceIpWindowSeconds", errors);
         RequirePositive(options.AccountPermitLimit, "Authentication:AccountPermitLimit", errors);
         RequirePositive(options.AccountWindowSeconds, "Authentication:AccountWindowSeconds", errors);
-        RequirePositive(options.MaxAccountThrottlePartitions, "Authentication:MaxAccountThrottlePartitions", errors);
-        RequirePositive(options.AccountThrottleIdleMinutes, "Authentication:AccountThrottleIdleMinutes", errors);
-        RequirePositive(options.MaxFailedAccessAttempts, "Authentication:MaxFailedAccessAttempts", errors);
-        RequirePositive(options.LockoutDurationMinutes, "Authentication:LockoutDurationMinutes", errors);
+        if (options.MaxAccountThrottlePartitions != 10000)
+        {
+            errors.Add("Authentication:MaxAccountThrottlePartitions must be 10000.");
+        }
+
+        if (options.AccountThrottleIdleMinutes != 30)
+        {
+            errors.Add("Authentication:AccountThrottleIdleMinutes must be 30.");
+        }
+
+        if (options.AccountWindowSeconds is int accountWindowSeconds &&
+            options.AccountThrottleIdleMinutes is int accountThrottleIdleMinutes &&
+            accountThrottleIdleMinutes * 60L < accountWindowSeconds)
+        {
+            errors.Add("Authentication:AccountThrottleIdleMinutes must be at least as long as AccountWindowSeconds.");
+        }
+        if (options.MaxFailedAccessAttempts != 10)
+        {
+            errors.Add("Authentication:MaxFailedAccessAttempts must be 10.");
+        }
+
+        if (options.LockoutDurationMinutes != 5)
+        {
+            errors.Add("Authentication:LockoutDurationMinutes must be 5.");
+        }
+
+        if (options.PasswordMinimumLength is null or < 15)
+        {
+            errors.Add("Authentication:PasswordMinimumLength must be at least 15.");
+        }
+
+        if (options.PasswordMaximumLength != 128 ||
+            options.PasswordMaximumLength < options.PasswordMinimumLength)
+        {
+            errors.Add("Authentication:PasswordMaximumLength must be 128 and at least the minimum length.");
+        }
+
+        if (options.PasswordHasherIterationCount is null or < 220000)
+        {
+            errors.Add("Authentication:PasswordHasherIterationCount must be at least 220000.");
+        }
 
         if (options.RefreshIdleLifetimeMinutes is int idleMinutes &&
             options.RefreshAbsoluteLifetimeDays is int absoluteDays &&
@@ -81,6 +118,11 @@ public sealed class AuthenticationOptionsValidator : IValidateOptions<Authentica
             }
         }
 
+        if (_environment.IsProduction() && options.AllowedOrigins?.Length != 1)
+        {
+            errors.Add("Authentication:AllowedOrigins must contain exactly one origin in Production.");
+        }
+
         if (options.TrustedProxies is null || options.TrustedProxies.Length == 0)
         {
             errors.Add("Authentication:TrustedProxies must be explicitly configured with IP addresses or 'none'.");
@@ -99,17 +141,18 @@ public sealed class AuthenticationOptionsValidator : IValidateOptions<Authentica
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
     }
 
-    private static void ValidateSigningKeys(AuthenticationOptions options, List<string> errors)
+    private void ValidateSigningKeys(AuthenticationOptions options, List<string> errors)
     {
+        var minimumKeySize = _environment.IsProduction() ? 3072 : 2048;
         if (!string.IsNullOrWhiteSpace(options.SigningPrivateKeyPem))
         {
             try
             {
                 using var rsa = RSA.Create();
                 rsa.ImportFromPem(options.SigningPrivateKeyPem);
-                if (rsa.KeySize < 2048 || rsa.ExportParameters(true).D is null)
+                if (rsa.KeySize < minimumKeySize || rsa.ExportParameters(true).D is null)
                 {
-                    errors.Add("Authentication:SigningPrivateKeyPem must be an RSA private key of at least 2048 bits.");
+                    errors.Add($"Authentication:SigningPrivateKeyPem must be an RSA private key of at least {minimumKeySize} bits.");
                 }
             }
             catch (Exception exception) when (exception is CryptographicException or ArgumentException)
@@ -147,9 +190,9 @@ public sealed class AuthenticationOptionsValidator : IValidateOptions<Authentica
             {
                 using var rsa = RSA.Create();
                 rsa.ImportFromPem(previousKey.PublicKeyPem);
-                if (rsa.KeySize < 2048)
+                if (rsa.KeySize < minimumKeySize)
                 {
-                    errors.Add("Authentication:PreviousSigningKeys must use RSA keys of at least 2048 bits.");
+                    errors.Add($"Authentication:PreviousSigningKeys must use RSA keys of at least {minimumKeySize} bits.");
                 }
             }
             catch (Exception exception) when (exception is CryptographicException or ArgumentException)

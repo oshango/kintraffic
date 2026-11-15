@@ -32,10 +32,13 @@ internal static class AuthenticationTestServices
             SourceIpWindowSeconds = 60,
             AccountPermitLimit = 2,
             AccountWindowSeconds = 60,
-            MaxAccountThrottlePartitions = 32,
-            AccountThrottleIdleMinutes = 5,
-            MaxFailedAccessAttempts = 2,
-            LockoutDurationMinutes = 5
+            MaxAccountThrottlePartitions = 10000,
+            AccountThrottleIdleMinutes = 30,
+            MaxFailedAccessAttempts = 10,
+            LockoutDurationMinutes = 5,
+            PasswordMinimumLength = 15,
+            PasswordMaximumLength = 128,
+            PasswordHasherIterationCount = 220000
         };
     }
 
@@ -66,7 +69,8 @@ internal static class AuthenticationTestServices
             identityOptions.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(options.LockoutDurationMinutes!.Value);
         })
             .AddSignInManager()
-            .AddEntityFrameworkStores<KinTrafficDbContext>();
+            .AddEntityFrameworkStores<KinTrafficDbContext>()
+            .AddKinTrafficPasswordPolicy(options);
         services.AddScoped<CredentialVerificationService>();
         services.AddScoped<AccessTokenService>();
         services.AddScoped<RefreshTokenService>();

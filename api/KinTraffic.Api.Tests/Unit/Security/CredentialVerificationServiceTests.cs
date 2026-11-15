@@ -10,6 +10,33 @@ namespace KinTraffic.Api.Tests.Unit.Security;
 public class CredentialVerificationServiceTests
 {
     [Fact]
+    public async Task PasswordPolicy_EnforcesLengthsWithoutCompositionRulesAndUsesConfiguredPbkdf2()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var context = database.CreateContext();
+        var options = AuthenticationTestServices.CreateOptions();
+        using var services = AuthenticationTestServices.CreateIdentityServices(context, options);
+        var userManager = services.GetRequiredService<UserManager<KinTrafficIdentityAccount>>();
+        var password = new string('a', options.PasswordMinimumLength!.Value);
+        var account = new KinTrafficIdentityAccount { UserName = "policy@example.invalid" };
+
+        var tooShort = await userManager.CreateAsync(new KinTrafficIdentityAccount { UserName = "short@example.invalid" }, new string('a', 14));
+        var tooLong = await userManager.CreateAsync(new KinTrafficIdentityAccount { UserName = "long@example.invalid" }, new string('a', 129));
+        var accepted = await userManager.CreateAsync(account, password);
+        var maximumLength = await userManager.CreateAsync(new KinTrafficIdentityAccount { UserName = "max@example.invalid" }, new string('a', 128));
+
+        Assert.False(tooShort.Succeeded);
+        Assert.Contains(tooLong.Errors, error => error.Code == "PasswordTooLong");
+        Assert.True(accepted.Succeeded, string.Join(", ", accepted.Errors.Select(error => error.Description)));
+        Assert.True(maximumLength.Succeeded, string.Join(", ", maximumLength.Errors.Select(error => error.Description)));
+        Assert.True(await userManager.CheckPasswordAsync(account, password));
+        var bytes = Convert.FromBase64String(account.PasswordHash!);
+        Assert.Equal(1, bytes[0]);
+        Assert.Equal(2, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(1, 4)));
+        Assert.Equal(options.PasswordHasherIterationCount, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(5, 4)));
+    }
+
+    [Fact]
     public async Task VerifyAsync_ValidCredentials_Succeeds()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
@@ -86,7 +113,14 @@ public class CredentialVerificationServiceTests
         await CreateAccountAsync(userManager, userName, password);
         var verifier = services.GetRequiredService<CredentialVerificationService>();
 
-        var badPasswordResult = await verifier.VerifyAsync(userName, "Incorrect-password-123!");
+        var badPasswordResult = CredentialVerificationResult.Failed;
+        for (var attempt = 0; attempt < 9; attempt++)
+        {
+            badPasswordResult = await verifier.VerifyAsync(userName, "Incorrect-password-123!");
+        }
+
+        var accountBeforeLockout = await userManager.FindByNameAsync(userName);
+        Assert.False(await userManager.IsLockedOutAsync(accountBeforeLockout!));
         var lockoutResult = await verifier.VerifyAsync(userName, "Incorrect-password-123!");
         var correctPasswordDuringLockout = await verifier.VerifyAsync(userName, password);
         var account = await userManager.FindByNameAsync(userName);

@@ -47,10 +47,18 @@ public static class DevelopmentAccountProvisioning
         }
 
         var authentication = configuration.GetSection(AuthenticationOptions.SectionName).Get<AuthenticationOptions>();
-        if (authentication?.MaxFailedAccessAttempts is null or <= 0 ||
-            authentication.LockoutDurationMinutes is null or <= 0)
+        if (authentication?.MaxFailedAccessAttempts != 10 ||
+            authentication.LockoutDurationMinutes != 5)
         {
             throw new InvalidOperationException("Identity lockout settings must be configured before provisioning.");
+        }
+
+        if (authentication.PasswordMinimumLength is null or < 15 ||
+            authentication.PasswordMaximumLength != 128 ||
+            authentication.PasswordMaximumLength < authentication.PasswordMinimumLength ||
+            authentication.PasswordHasherIterationCount is null or < 220000)
+        {
+            throw new InvalidOperationException("Identity password settings must be configured before provisioning.");
         }
 
         if (Console.IsInputRedirected)
@@ -62,6 +70,7 @@ public static class DevelopmentAccountProvisioning
         var password = ReadPassword();
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddConsole());
+        services.AddSingleton(authentication);
         services.AddDbContext<KinTrafficDbContext>(options => options.UseSqlServer(connectionString));
         services.AddIdentityCore<KinTrafficIdentityAccount>(options =>
         {
@@ -69,7 +78,8 @@ public static class DevelopmentAccountProvisioning
             options.Lockout.MaxFailedAccessAttempts = authentication.MaxFailedAccessAttempts.Value;
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(authentication.LockoutDurationMinutes.Value);
         })
-            .AddEntityFrameworkStores<KinTrafficDbContext>();
+            .AddEntityFrameworkStores<KinTrafficDbContext>()
+            .AddKinTrafficPasswordPolicy(authentication);
 
         await using var provider = services.BuildServiceProvider();
         var userManager = provider.GetRequiredService<UserManager<KinTrafficIdentityAccount>>();

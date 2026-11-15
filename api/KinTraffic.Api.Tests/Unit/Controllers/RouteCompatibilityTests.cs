@@ -1,4 +1,5 @@
 using KinTraffic.Api.Controllers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
 
@@ -19,5 +20,14 @@ public class RouteCompatibilityTests
         {
             Assert.Contains(expectedRoute, routeTemplates);
         }
+    }
+
+    [Fact]
+    public void TrafficSignalsRoute_RequiresAuthorization()
+    {
+        var method = typeof(TrafficController).GetMethod(nameof(TrafficController.GetSignals));
+
+        Assert.NotNull(method);
+        Assert.NotNull(method!.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).SingleOrDefault());
     }
 }

@@ -53,6 +53,10 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [ProducesResponseType(typeof(AuthenticationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {
         if (!HasValidCsrfRequest())
@@ -75,6 +79,9 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         if (!HasValidCsrfRequest())
@@ -95,7 +102,7 @@ public sealed class AuthController : ControllerBase
         var fetchSite = Request.Headers["Sec-Fetch-Site"].ToString();
         return Request.Headers[CsrfHeaderName] == CsrfHeaderValue &&
                (_options.AllowedOrigins ?? []).Contains(origin, StringComparer.Ordinal) &&
-               fetchSite is "same-origin" or "same-site" or "cross-site";
+             fetchSite is "same-origin" or "same-site";
     }
 
     private void SetRefreshCookie(AuthenticationSessionTokens tokens)

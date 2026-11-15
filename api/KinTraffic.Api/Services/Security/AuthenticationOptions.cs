@@ -26,6 +26,9 @@ public sealed class AuthenticationOptions
     public int? AccountThrottleIdleMinutes { get; set; }
     public int? MaxFailedAccessAttempts { get; set; }
     public int? LockoutDurationMinutes { get; set; }
+    public int? PasswordMinimumLength { get; set; }
+    public int? PasswordMaximumLength { get; set; }
+    public int? PasswordHasherIterationCount { get; set; }
 }
 
 public sealed class SigningPublicKeyOptions

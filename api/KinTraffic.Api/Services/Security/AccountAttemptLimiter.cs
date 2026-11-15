@@ -34,7 +34,7 @@ public sealed class AccountAttemptLimiter
         lock (_sync)
         {
             foreach (var idleKey in _partitions
-                         .Where(pair => now - pair.Value.LastSeenAt >= idleLimit)
+                         .Where(pair => GetEvictionTime(pair.Value, idleLimit, window) <= now)
                          .Select(pair => pair.Key)
                          .ToArray())
             {
@@ -45,8 +45,11 @@ public sealed class AccountAttemptLimiter
             {
                 if (_partitions.Count >= _options.MaxAccountThrottlePartitions!.Value)
                 {
+                    var nextEviction = _partitions
+                        .MinBy(pair => GetEvictionTime(pair.Value, idleLimit, window))
+                        .Value;
                     retryAfter = Max(TimeSpan.FromSeconds(1),
-                        _partitions.MinBy(pair => pair.Value.LastSeenAt).Value.LastSeenAt + idleLimit - now);
+                        GetEvictionTime(nextEviction, idleLimit, window) - now);
                     return false;
                 }
 
@@ -74,6 +77,11 @@ public sealed class AccountAttemptLimiter
     }
 
     private static TimeSpan Max(TimeSpan left, TimeSpan right) => left > right ? left : right;
+
+    private static DateTimeOffset GetEvictionTime(Partition partition, TimeSpan idleLimit, TimeSpan window) =>
+        Max(partition.LastSeenAt + idleLimit, partition.WindowStartedAt + window);
+
+    private static DateTimeOffset Max(DateTimeOffset left, DateTimeOffset right) => left > right ? left : right;
 
     private sealed class Partition(DateTimeOffset now)
     {

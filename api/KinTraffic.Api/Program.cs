@@ -16,6 +16,7 @@ using KinTraffic.Api.Services.Security;
 using KinTraffic.Api.Services.Traffic;
 using KinTraffic.Api.Services.WorkOrders;
 using KinTraffic.Api.Persistence;
+using KinTraffic.Api.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -31,7 +32,7 @@ if (DevelopmentAccountProvisioning.IsRequested(args))
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddKinTrafficOpenApi();
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<IValidateOptions<AuthenticationOptions>, AuthenticationOptionsValidator>();
@@ -69,7 +70,8 @@ builder.Services.AddIdentityCore<KinTrafficIdentityAccount>(options =>
 	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(configuredAuthentication.LockoutDurationMinutes ?? 0);
 })
 	.AddSignInManager()
-	.AddEntityFrameworkStores<KinTrafficDbContext>();
+	.AddEntityFrameworkStores<KinTrafficDbContext>()
+	.AddKinTrafficPasswordPolicy(configuredAuthentication);
 builder.Services.AddScoped<CredentialVerificationService>();
 builder.Services.AddSingleton<SigningKeyRing>();
 builder.Services.AddSingleton<AccessTokenService>();
@@ -127,7 +129,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 	await dbContext.Database.MigrateAsync();
 }
 
-app.MapOpenApi();
+app.MapOpenApiInDevelopment();
 app.UseRouting();
 if (configuredAuthentication.AllowedOrigins is { Length: > 0 })
 {
