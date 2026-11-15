@@ -1,8 +1,10 @@
 # ADR-002: KinTraffic-Managed Application Identity
 
 - **Status:** Protocol and browser refresh-token transport approved in principle; implementation and remaining decisions require approval
+- **Superseded in part by:** [ADR-004](ADR-004-first-party-jwt-and-refresh-sessions.md) for the first-party JWT and refresh-session decisions.
 - **Date:** 2026-11-09
 - **Issues:** [OSH-65](https://github.com/oshango/kintraffic/issues/65), [OSH-66](https://github.com/oshango/kintraffic/issues/66), [OSH-67](https://github.com/oshango/kintraffic/issues/67)
+- **Related proposal:** [ADR-004](ADR-004-first-party-jwt-and-refresh-sessions.md) records a proposed first-party JWT deviation from this ADR's OAuth/OIDC direction.
 
 ## Context
 
